@@ -261,20 +261,6 @@ fun CardShuffleScreen(
         cardStates = list
     }
 
-    // Compute hand slot for a selected card.
-    fun computeHandSlot(
-        handIndex: Int,
-        canvasSize: Size,
-        cardWidth: Float,
-        cardHeight: Float,
-        spacing: Float
-    ): Offset {
-        val handY = if (canvasSize.height != 0f) canvasSize.height * 0.8f - cardHeight - 20f else 200f
-        val startX = canvasSize.width * 0.2f
-        val targetX = startX + handIndex * (cardWidth - spacing)
-        return Offset(targetX, handY)
-    }
-
     // Helper for converting pointer offsets.
     fun convertPointerOffset(offset: Offset): Offset {
         val pivot = Offset(canvasSize.width / 2, canvasSize.height / 2)
@@ -310,7 +296,11 @@ fun CardShuffleScreen(
         )
     }
 
-    // In DEAL state: tap on a card to select it (max 5 selections).
+    // ---------------------------------------------------------------------------------
+    // Updated Pointer Input for DEAL state:
+    // When a card is tapped it will move to the bottom-center and fan out.
+    // Also, do not allow more than 5 selections.
+    // ---------------------------------------------------------------------------------
     if (currentStep == ShuffleStep.DEAL) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
@@ -321,33 +311,40 @@ fun CardShuffleScreen(
                         if (transformedOffset.x in state.x..(state.x + cardWidth) &&
                             transformedOffset.y in state.y..(state.y + cardHeight)
                         ) {
-                            if (!state.selected) {
-                                val currentSelectedCount = cardStates.count { it.selected }
-                                if (currentSelectedCount < 5) {
-                                    val target = computeHandSlot(
-                                        currentSelectedCount,
-                                        canvasSize,
-                                        cardWidth,
-                                        cardHeight,
-                                        spacing
-                                    )
+                            // Only allow selection if not already selected and less than 5 cards selected.
+                            if (!state.selected && cardStates.count { it.selected } < 5) {
+                                updateCard(i) { it.copy(selected = true) }
+                                // Get all selected card indices.
+                                val selectedIndices = cardStates.withIndex()
+                                    .filter { it.value.selected }
+                                    .map { it.index }
+                                val selectedCount = selectedIndices.size
+                                // Define the bottom-center pivot and the target position (top-left)
+                                // so that the card's bottom-center lands at the pivot.
+                                val bottomCenterPivot = Offset(canvasSize.width / 2, canvasSize.height * 0.8f)
+                                val targetPosition = bottomCenterPivot - Offset(cardWidth / 2, cardHeight)
+                                // Define the total fan angle (in degrees).
+                                val totalFanAngle = 40f
+                                // For each selected card, compute its target rotation.
+                                for ((j, idx) in selectedIndices.withIndex()) {
+                                    val targetRotation = if (selectedCount == 1) {
+                                        0f
+                                    } else {
+                                        // Evenly spread angles from -totalFanAngle/2 to +totalFanAngle/2.
+                                        -totalFanAngle / 2 + (totalFanAngle * j / (selectedCount - 1))
+                                    }
                                     scope.launch {
-                                        val startX = state.x
-                                        val startY = state.y
+                                        val card = cardStates[idx]
+                                        val startX = card.x
+                                        val startY = card.y
+                                        val startRotation = card.rotation
                                         animateValue(500) { progress ->
-                                            val newX = startX + (target.x - startX) * progress
-                                            val newY = startY + (target.y - startY) * progress
-                                            updateCard(i) {
-                                                it.copy(
-                                                    x = newX,
-                                                    y = newY,
-                                                    handIndex = currentSelectedCount,
-                                                    rotation = 0f
-                                                )
-                                            }
+                                            val newX = startX + (targetPosition.x - startX) * progress
+                                            val newY = startY + (targetPosition.y - startY) * progress
+                                            val newRotation = startRotation + (targetRotation - startRotation) * progress
+                                            updateCard(idx) { it.copy(x = newX, y = newY, rotation = newRotation) }
                                         }
                                     }
-                                    updateCard(i) { it.copy(selected = true) }
                                 }
                             }
                             break
@@ -541,31 +538,52 @@ fun CardShuffleScreen(
                 scale(scale = cameraScale, pivot = Offset(canvasSize.width / 2, canvasSize.height / 2))
             }) {
                 cardStates.forEachIndexed { i, state ->
-                    withTransform({
-                        translate(left = state.x, top = state.y)
-                        rotate(degrees = state.rotation, pivot = Offset(cardWidth / 2, cardHeight / 2))
-                    }) {
-                        val flipAngle = state.flipAngle
-                        val scaleXFactor = abs(cos(flipAngle * PI / 180).toFloat())
+                    if (state.selected) {
+                        // For selected cards: rotate about the bottom-center to fan them out.
                         withTransform({
-                            scale(scaleXFactor, 1f, pivot = Offset(cardWidth / 2, cardHeight / 2))
+                            translate(left = state.x, top = state.y)
+                            rotate(degrees = state.rotation, pivot = Offset(cardWidth / 2, cardHeight))
                         }) {
-                            val imageToDraw = if (flipAngle < 90f) frontImages[state.card.id]!! else backImage
-                            drawScaledImage(
-                                image = imageToDraw,
-                                x = cardWidth * 0.1f,
-                                y = cardHeight * 0.1f,
-                                targetWidth = cardWidth,
-                                targetHeight = cardHeight
-                            )
-                            if (state.selected) {
+                            val flipAngle = state.flipAngle
+                            val scaleXFactor = abs(cos(flipAngle * PI / 180).toFloat())
+                            withTransform({
+                                scale(scaleXFactor, 1f, pivot = Offset(cardWidth / 2, cardHeight / 2))
+                            }) {
+                                val imageToDraw = if (flipAngle < 90f) frontImages[state.card.id]!! else backImage
+                                drawScaledImage(
+                                    image = imageToDraw,
+                                    x = cardWidth * 0.1f,
+                                    y = cardHeight * 0.1f,
+                                    targetWidth = cardWidth,
+                                    targetHeight = cardHeight
+                                )
                                 drawRect(
                                     color = Color.Yellow,
                                     topLeft = Offset.Zero,
                                     size = Size(cardWidth, cardHeight),
                                     style = Stroke(width = 4f)
                                 )
-                            } else {
+                            }
+                        }
+                    } else {
+                        // For unselected cards: rotate about the center.
+                        withTransform({
+                            translate(left = state.x, top = state.y)
+                            rotate(degrees = state.rotation, pivot = Offset(cardWidth / 2, cardHeight / 2))
+                        }) {
+                            val flipAngle = state.flipAngle
+                            val scaleXFactor = abs(cos(flipAngle * PI / 180).toFloat())
+                            withTransform({
+                                scale(scaleXFactor, 1f, pivot = Offset(cardWidth / 2, cardHeight / 2))
+                            }) {
+                                val imageToDraw = if (flipAngle < 90f) frontImages[state.card.id]!! else backImage
+                                drawScaledImage(
+                                    image = imageToDraw,
+                                    x = cardWidth * 0.1f,
+                                    y = cardHeight * 0.1f,
+                                    targetWidth = cardWidth,
+                                    targetHeight = cardHeight
+                                )
                                 drawRect(
                                     color = Color.Green,
                                     topLeft = Offset.Zero,
@@ -700,15 +718,13 @@ fun CardShuffleScreen(
                                             .filter { !it.value.selected }
                                             .map { it.index }
 
-                                        // Animate unselected cards off-screen by scattering them in random directions.
+                                        // Animate unselected cards off-screen by scattering them farther out.
                                         val offScreenJobs = unselectedIndices.map { i ->
                                             launch {
                                                 val startX = cardStates[i].x
                                                 val startY = cardStates[i].y
-                                                // Random angle in radians.
                                                 val angle = Random.nextDouble(0.0, 2.0 * PI)
-                                                // Distance to move the card off-screen.
-                                                val distance = 400f
+                                                val distance = 800f  // Increased distance for unused cards.
                                                 val targetX = startX + (distance * cos(angle)).toFloat()
                                                 val targetY = startY + (distance * sin(angle)).toFloat()
                                                 animateValue(500) { progress ->
@@ -720,7 +736,7 @@ fun CardShuffleScreen(
                                         }
                                         offScreenJobs.forEach { it.join() }
 
-                                        // Reposition selected cards.
+                                        // Reposition selected cards and assign a handIndex.
                                         val selectedCount = selectedIndices.size
                                         val centerX = canvasSize.width / 2 - cardWidth / 2
                                         val centerY = canvasSize.height / 2 - cardHeight / 2
@@ -762,7 +778,7 @@ fun CardShuffleScreen(
                                                 animateValue(500) { progress ->
                                                     val newX = startX + (target.x - startX) * progress
                                                     val newY = startY + (target.y - startY) * progress
-                                                    updateCard(i) { it.copy(x = newX, y = newY, rotation = 0f) }
+                                                    updateCard(i) { it.copy(x = newX, y = newY, rotation = 0f, handIndex = index) }
                                                 }
                                             }
                                         }
@@ -908,4 +924,3 @@ fun CardShuffleScreen(
         }
     }
 }
-
