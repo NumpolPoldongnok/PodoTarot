@@ -268,7 +268,6 @@ fun CardShuffleScreen(
     }
 
     // Compute hand slot for a selected card.
-    // Now the y-coordinate is set toward the bottom of the device.
     fun computeHandSlot(
         handIndex: Int,
         canvasSize: Size,
@@ -277,7 +276,6 @@ fun CardShuffleScreen(
         spacing: Float
     ): Offset {
         val handY = if (canvasSize.height != 0f) canvasSize.height * 0.8f - cardHeight - 20f else 200f
-        val totalWidth = 5 * cardWidth + 4 * spacing
         val startX = canvasSize.width * 0.2f
         val targetX = startX + handIndex * (cardWidth - spacing)
         return Offset(targetX, handY)
@@ -297,7 +295,7 @@ fun CardShuffleScreen(
         }
     }
 
-    // In REVEAL state: tap on a face‑up card to view it full‑screen (with details).
+    // In REVEAL state: tap on a face‑up card to view it full‑screen.
     if (currentStep == ShuffleStep.REVEAL) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
@@ -392,7 +390,6 @@ fun CardShuffleScreen(
     LaunchedEffect(currentStep) {
         val startOffset = cameraOffset
         val startScale = cameraScale
-        // Set target scale based on state:
         val targetScale = when (currentStep) {
             ShuffleStep.REVEAL -> 1f
             ShuffleStep.SHUFFLE -> 1.5f
@@ -521,13 +518,18 @@ fun CardShuffleScreen(
         ShuffleStep.REVEAL_SELECTED -> "Cards Revealed"
     }
 
-    // Position control buttons at top when in DEAL state; else at bottom.
-    val controlButtonAlignment = if (currentStep == ShuffleStep.DEAL) Alignment.TopCenter else Alignment.BottomCenter
+    // --- Alignment Logic ---
+    // In DEAL state, the "Reveal Selected" button is centered.
+    // In REVEAL_SELECTED state, the "See all" and "Restart" buttons are at the bottom.
+    val controlButtonAlignment = when (currentStep) {
+        ShuffleStep.DEAL -> Alignment.Center
+        ShuffleStep.REVEAL_SELECTED -> Alignment.BottomCenter
+        else -> Alignment.BottomCenter
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Changed background to a bright vertical gradient.
             .background(
                 Brush.verticalGradient(
                     colors = listOf(Color(0xFFFFF176), Color(0xFFFFD54F))
@@ -540,7 +542,6 @@ fun CardShuffleScreen(
                 .then(pointerModifier)
         ) {
             canvasSize = size
-            // Use the canvas center as the pivot for scaling.
             withTransform({
                 translate(left = cameraOffset.x, top = cameraOffset.y)
                 scale(scale = cameraScale, pivot = Offset(canvasSize.width / 2, canvasSize.height / 2))
@@ -623,7 +624,6 @@ fun CardShuffleScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (currentStep == ShuffleStep.REVEAL) {
-                    // Quick Fortune button with faster animation and special effect.
                     Button(
                         onClick = {
                             scope.launch {
@@ -648,7 +648,6 @@ fun CardShuffleScreen(
                     ) {
                         Text("Quick Fortune")
                     }
-                    // Merge button.
                     Button(
                         onClick = {
                             if (!isProcessing) {
@@ -694,7 +693,6 @@ fun CardShuffleScreen(
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
                     val buttonText = if (selectedCount > 0) "Reveal Selected" else "Select 1-5 Cards"
-                    // Updated Reveal Selected button logic:
                     Button(
                         onClick = {
                             if (!isProcessing) {
@@ -708,16 +706,20 @@ fun CardShuffleScreen(
                                             .filter { !it.value.selected }
                                             .map { it.index }
 
-                                        // Animate unselected cards off-screen.
-                                        val offScreenX = canvasSize.width + 200f
-                                        val offScreenY = canvasSize.height + 200f
+                                        // Animate unselected cards off-screen by scattering them in random directions.
                                         val offScreenJobs = unselectedIndices.map { i ->
                                             launch {
                                                 val startX = cardStates[i].x
                                                 val startY = cardStates[i].y
+                                                // Random angle in radians.
+                                                val angle = Random.nextDouble(0.0, 2.0 * PI)
+                                                // Distance to move the card off-screen.
+                                                val distance = 400f
+                                                val targetX = startX + (distance * cos(angle)).toFloat()
+                                                val targetY = startY + (distance * sin(angle)).toFloat()
                                                 animateValue(500) { progress ->
-                                                    val newX = startX + (offScreenX - startX) * progress
-                                                    val newY = startY + (offScreenY - startY) * progress
+                                                    val newX = startX + (targetX - startX) * progress
+                                                    val newY = startY + (targetY - startY) * progress
                                                     updateCard(i) { it.copy(x = newX, y = newY) }
                                                 }
                                             }
@@ -735,7 +737,7 @@ fun CardShuffleScreen(
                                                 Offset(centerX, centerY + cardHeight / 2 + spacing)
                                             )
                                             3 -> listOf(
-                                                Offset(centerX, centerY - cardHeight), // top center
+                                                Offset(centerX, centerY - cardHeight),
                                                 Offset(centerX - cardWidth - spacing, centerY + cardHeight / 4),
                                                 Offset(centerX + cardWidth + spacing, centerY + cardHeight / 4)
                                             )
@@ -743,18 +745,18 @@ fun CardShuffleScreen(
                                                 val offsetX = cardWidth / 2 + spacing / 2
                                                 val offsetY = cardHeight / 2 + spacing / 2
                                                 listOf(
-                                                    Offset(centerX - offsetX, centerY - offsetY), // top left
-                                                    Offset(centerX + offsetX, centerY - offsetY), // top right
-                                                    Offset(centerX - offsetX, centerY + offsetY), // bottom left
-                                                    Offset(centerX + offsetX, centerY + offsetY)  // bottom right
+                                                    Offset(centerX - offsetX, centerY - offsetY),
+                                                    Offset(centerX + offsetX, centerY - offsetY),
+                                                    Offset(centerX - offsetX, centerY + offsetY),
+                                                    Offset(centerX + offsetX, centerY + offsetY)
                                                 )
                                             }
                                             5 -> listOf(
-                                                Offset(centerX, centerY), // center
-                                                Offset(centerX, centerY - cardHeight - spacing), // top
-                                                Offset(centerX, centerY + cardHeight + spacing), // bottom
-                                                Offset(centerX - cardWidth - spacing, centerY), // left
-                                                Offset(centerX + cardWidth + spacing, centerY)  // right
+                                                Offset(centerX, centerY),
+                                                Offset(centerX, centerY - cardHeight - spacing),
+                                                Offset(centerX, centerY + cardHeight + spacing),
+                                                Offset(centerX - cardWidth - spacing, centerY),
+                                                Offset(centerX + cardWidth + spacing, centerY)
                                             )
                                             else -> emptyList()
                                         }
