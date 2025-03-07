@@ -55,6 +55,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
 import podotaro.composeapp.generated.resources.Res
 import podotaro.composeapp.generated.resources.card_back
+import podotaro.composeapp.generated.resources.card_back_01
 import podotaro.composeapp.generated.resources.death
 import podotaro.composeapp.generated.resources.judgment
 import podotaro.composeapp.generated.resources.justice
@@ -158,7 +159,7 @@ fun loadFrontImage(drawable: DrawableResource): ImageBitmap {
 
 @Composable
 fun loadBackImage(): ImageBitmap {
-    return imageResource(Res.drawable.card_back)
+    return imageResource(Res.drawable.card_back_01)
 }
 
 fun DrawScope.drawScaledImage(
@@ -185,9 +186,6 @@ fun DrawScope.drawScaledImage(
 
 enum class AppLanguage { EN, TH }
 
-// NOTE: The getCardDetailsEnglish and getCardDetailsThai functions have been moved
-// to a separate file and are assumed to be imported for use in FortuneResultScreen.
-
 // -------------------------------------------------------------------------------------
 // 6) COMPOSABLE: CardShuffleScreen
 // -------------------------------------------------------------------------------------
@@ -212,7 +210,7 @@ fun CardShuffleScreen(
     val cardHeight = 220f
     val spacing = 20f
 
-    // In-app language state (used only for full-screen card detail).
+    // In-app language state.
     var currentLanguage by remember { mutableStateOf(AppLanguage.EN) }
 
     // Control button visibility.
@@ -245,7 +243,7 @@ fun CardShuffleScreen(
     var currentStep by remember { mutableStateOf(ShuffleStep.REVEAL) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     var cameraOffset by remember { mutableStateOf(Offset.Zero) }
-    var cameraScale by remember { mutableStateOf(1f) }
+    var cameraScale by remember { mutableStateOf(2f) } // initial value; will be animated based on state
     val scope = rememberCoroutineScope()
 
     var showFortuneScreen by remember { mutableStateOf(false) }
@@ -269,7 +267,8 @@ fun CardShuffleScreen(
         cardStates = list
     }
 
-    // Compute hand slot for a selected card at the TOP area.
+    // Compute hand slot for a selected card.
+    // Now the y-coordinate is set toward the bottom of the device.
     fun computeHandSlot(
         handIndex: Int,
         canvasSize: Size,
@@ -277,11 +276,17 @@ fun CardShuffleScreen(
         cardHeight: Float,
         spacing: Float
     ): Offset {
-        val handY = 200f
+        val handY = if (canvasSize.height != 0f) canvasSize.height * 0.8f - cardHeight - 20f else 200f
         val totalWidth = 5 * cardWidth + 4 * spacing
-        val startX = (canvasSize.width - totalWidth) / 2
-        val targetX = startX + handIndex * (cardWidth + spacing)
+        val startX = canvasSize.width * 0.2f
+        val targetX = startX + handIndex * (cardWidth - spacing)
         return Offset(targetX, handY)
+    }
+
+    // Helper for converting pointer offsets.
+    fun convertPointerOffset(offset: Offset): Offset {
+        val pivot = Offset(canvasSize.width / 2, canvasSize.height / 2)
+        return pivot + (offset - cameraOffset - pivot) / cameraScale
     }
 
     // Base pointer input for camera dragging.
@@ -297,7 +302,7 @@ fun CardShuffleScreen(
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
                 detectTapGestures { offset ->
-                    val transformedOffset = (offset - cameraOffset) / cameraScale
+                    val transformedOffset = convertPointerOffset(offset)
                     for (i in cardStates.indices.reversed()) {
                         val state = cardStates[i]
                         if (transformedOffset.x in state.x..(state.x + cardWidth) &&
@@ -313,12 +318,12 @@ fun CardShuffleScreen(
         )
     }
 
-    // In DEAL state: tap on topmost card to select it (max 5 selections).
+    // In DEAL state: tap on a card to select it (max 5 selections).
     if (currentStep == ShuffleStep.DEAL) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
                 detectTapGestures { offset ->
-                    val transformedOffset = (offset - cameraOffset) / cameraScale
+                    val transformedOffset = convertPointerOffset(offset)
                     for (i in cardStates.indices.reversed()) {
                         val state = cardStates[i]
                         if (transformedOffset.x in state.x..(state.x + cardWidth) &&
@@ -361,19 +366,18 @@ fun CardShuffleScreen(
         )
     }
 
-    // In REVEAL_SELECTED state: tap on a revealed card (or press "See all") to open FortuneResultScreen.
+    // In REVEAL_SELECTED state: tap on a revealed card to open FortuneResultScreen.
     if (currentStep == ShuffleStep.REVEAL_SELECTED) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
                 detectTapGestures { offset ->
-                    val transformedOffset = (offset - cameraOffset) / cameraScale
+                    val transformedOffset = convertPointerOffset(offset)
                     for (i in cardStates.indices.reversed()) {
                         val state = cardStates[i]
                         if (transformedOffset.x in state.x..(state.x + cardWidth) &&
                             transformedOffset.y in state.y..(state.y + cardHeight) &&
                             state.faceUp
                         ) {
-                            // Clear any individual card view and open the fortune screen.
                             fullScreenCard = null
                             showFortuneScreen = true
                             break
@@ -388,12 +392,18 @@ fun CardShuffleScreen(
     LaunchedEffect(currentStep) {
         val startOffset = cameraOffset
         val startScale = cameraScale
+        // Set target scale based on state:
+        val targetScale = when (currentStep) {
+            ShuffleStep.REVEAL -> 1f
+            ShuffleStep.SHUFFLE -> 1.5f
+            else -> 2f
+        }
         animateValue(500) { progress ->
             cameraOffset = Offset(
                 x = startOffset.x * (1 - progress),
                 y = startOffset.y * (1 - progress)
             )
-            cameraScale = startScale + (1f - startScale) * progress
+            cameraScale = startScale + (targetScale - startScale) * progress
         }
     }
 
@@ -503,14 +513,25 @@ fun CardShuffleScreen(
         showControlButton = currentStep != ShuffleStep.SHUFFLE
     }
 
+    // Update header title based on state.
+    val headerTitle = when (currentStep) {
+        ShuffleStep.REVEAL -> "Card Preview"
+        ShuffleStep.SHUFFLE -> "Shuffling Cards"
+        ShuffleStep.DEAL -> "Select 1-5 Cards"
+        ShuffleStep.REVEAL_SELECTED -> "Cards Revealed"
+    }
+
+    // Position control buttons at top when in DEAL state; else at bottom.
+    val controlButtonAlignment = if (currentStep == ShuffleStep.DEAL) Alignment.TopCenter else Alignment.BottomCenter
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Changed background to a bright vertical gradient.
             .background(
-                color = Color(0xff9c4543)
-//                Brush.verticalGradient(
-//                    colors = listOf(Color(0xFF1E1E1E), Color(0xFF2E2E2E))
-//                )
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFFFFF176), Color(0xFFFFD54F))
+                )
             )
     ) {
         Canvas(
@@ -519,9 +540,10 @@ fun CardShuffleScreen(
                 .then(pointerModifier)
         ) {
             canvasSize = size
+            // Use the canvas center as the pivot for scaling.
             withTransform({
                 translate(left = cameraOffset.x, top = cameraOffset.y)
-                scale(scale = cameraScale, pivot = Offset.Zero)
+                scale(scale = cameraScale, pivot = Offset(canvasSize.width / 2, canvasSize.height / 2))
             }) {
                 cardStates.forEachIndexed { i, state ->
                     withTransform({
@@ -562,7 +584,7 @@ fun CardShuffleScreen(
             }
         }
 
-        // Header Bar.
+        // Header Bar with language toggle.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -572,45 +594,23 @@ fun CardShuffleScreen(
                 .shadow(4.dp)
         ) {
             Text(
-                text = "Step: $currentStep",
+                text = headerTitle,
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-        }
-
-        // Zoom controls at Bottom Left.
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             Text(
-                text = "➕",
-                fontSize = 24.sp,
+                text = if (currentLanguage == AppLanguage.EN) "EN" else "TH",
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp)
+                    .clickable {
+                        currentLanguage = if (currentLanguage == AppLanguage.EN) AppLanguage.TH else AppLanguage.EN
+                    },
                 color = Color.White,
-                modifier = Modifier.clickable { scope.launch { cameraScale *= 1.2f } }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "➖",
-                fontSize = 24.sp,
-                color = Color.White,
-                modifier = Modifier.clickable { scope.launch { cameraScale /= 1.2f } }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "🔄",
-                fontSize = 24.sp,
-                color = Color.White,
-                modifier = Modifier.clickable {
-                    scope.launch {
-                        cameraOffset = Offset.Zero
-                        cameraScale = 1f
-                    }
-                }
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -618,7 +618,7 @@ fun CardShuffleScreen(
         if (showControlButton) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(controlButtonAlignment)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -630,9 +630,7 @@ fun CardShuffleScreen(
                                 val shuffledIndices = cardStates.indices.shuffled()
                                 for ((i, index) in shuffledIndices.withIndex()) {
                                     fullScreenCard = cardStates[index]
-                                    // Faster display time.
                                     delay(150)
-                                    // When reaching final card, perform special scaling effect.
                                     if (i == shuffledIndices.lastIndex) {
                                         animateValue(150) { progress ->
                                             finalCardScale = 1f + 0.3f * progress
@@ -696,6 +694,7 @@ fun CardShuffleScreen(
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
                     val buttonText = if (selectedCount > 0) "Reveal Selected" else "Select 1-5 Cards"
+                    // Updated Reveal Selected button logic:
                     Button(
                         onClick = {
                             if (!isProcessing) {
@@ -705,7 +704,76 @@ fun CardShuffleScreen(
                                         val selectedIndices = cardStates.withIndex()
                                             .filter { it.value.selected }
                                             .map { it.index }
-                                        val revealJobs = selectedIndices.map { i ->
+                                        val unselectedIndices = cardStates.withIndex()
+                                            .filter { !it.value.selected }
+                                            .map { it.index }
+
+                                        // Animate unselected cards off-screen.
+                                        val offScreenX = canvasSize.width + 200f
+                                        val offScreenY = canvasSize.height + 200f
+                                        val offScreenJobs = unselectedIndices.map { i ->
+                                            launch {
+                                                val startX = cardStates[i].x
+                                                val startY = cardStates[i].y
+                                                animateValue(500) { progress ->
+                                                    val newX = startX + (offScreenX - startX) * progress
+                                                    val newY = startY + (offScreenY - startY) * progress
+                                                    updateCard(i) { it.copy(x = newX, y = newY) }
+                                                }
+                                            }
+                                        }
+                                        offScreenJobs.forEach { it.join() }
+
+                                        // Reposition selected cards.
+                                        val selectedCount = selectedIndices.size
+                                        val centerX = canvasSize.width / 2 - cardWidth / 2
+                                        val centerY = canvasSize.height / 2 - cardHeight / 2
+                                        val targetPositions = when (selectedCount) {
+                                            1 -> listOf(Offset(centerX, centerY))
+                                            2 -> listOf(
+                                                Offset(centerX, centerY - cardHeight / 2 - spacing),
+                                                Offset(centerX, centerY + cardHeight / 2 + spacing)
+                                            )
+                                            3 -> listOf(
+                                                Offset(centerX, centerY - cardHeight), // top center
+                                                Offset(centerX - cardWidth - spacing, centerY + cardHeight / 4),
+                                                Offset(centerX + cardWidth + spacing, centerY + cardHeight / 4)
+                                            )
+                                            4 -> {
+                                                val offsetX = cardWidth / 2 + spacing / 2
+                                                val offsetY = cardHeight / 2 + spacing / 2
+                                                listOf(
+                                                    Offset(centerX - offsetX, centerY - offsetY), // top left
+                                                    Offset(centerX + offsetX, centerY - offsetY), // top right
+                                                    Offset(centerX - offsetX, centerY + offsetY), // bottom left
+                                                    Offset(centerX + offsetX, centerY + offsetY)  // bottom right
+                                                )
+                                            }
+                                            5 -> listOf(
+                                                Offset(centerX, centerY), // center
+                                                Offset(centerX, centerY - cardHeight - spacing), // top
+                                                Offset(centerX, centerY + cardHeight + spacing), // bottom
+                                                Offset(centerX - cardWidth - spacing, centerY), // left
+                                                Offset(centerX + cardWidth + spacing, centerY)  // right
+                                            )
+                                            else -> emptyList()
+                                        }
+                                        val repositionJobs = selectedIndices.mapIndexed { index, i ->
+                                            launch {
+                                                val startX = cardStates[i].x
+                                                val startY = cardStates[i].y
+                                                val target = targetPositions.getOrElse(index) { Offset(centerX, centerY) }
+                                                animateValue(500) { progress ->
+                                                    val newX = startX + (target.x - startX) * progress
+                                                    val newY = startY + (target.y - startY) * progress
+                                                    updateCard(i) { it.copy(x = newX, y = newY, rotation = 0f) }
+                                                }
+                                            }
+                                        }
+                                        repositionJobs.forEach { it.join() }
+
+                                        // Flip selected cards from back to front.
+                                        val flipJobs = selectedIndices.map { i ->
                                             launch {
                                                 animateValue(500) { progress ->
                                                     val angle = 180f - progress * 180f
@@ -714,7 +782,8 @@ fun CardShuffleScreen(
                                                 updateCard(i) { it.copy(faceUp = true) }
                                             }
                                         }
-                                        revealJobs.forEach { it.join() }
+                                        flipJobs.forEach { it.join() }
+
                                         currentStep = ShuffleStep.REVEAL_SELECTED
                                     }
                                     isProcessing = false
@@ -729,7 +798,6 @@ fun CardShuffleScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Bug fix: Clear any individual full-screen card before opening fortune screen.
                         Button(onClick = { fullScreenCard = null; showFortuneScreen = true }) {
                             Text("See all")
                         }
@@ -768,7 +836,6 @@ fun CardShuffleScreen(
 
         // Display FortuneResultScreen overlay if requested.
         if (showFortuneScreen) {
-            // Gather revealed (selected) cards.
             val revealedCards = cardStates.filter { it.selected && it.handIndex != null }
                 .sortedBy { it.handIndex }
             FortuneResultScreen(
@@ -814,7 +881,6 @@ fun CardShuffleScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Apply special scaling effect on final card.
                     Image(
                         bitmap = loadFrontImage(fullScreenCard!!.card.drawable),
                         contentDescription = fullScreenCard!!.card.description,
@@ -899,7 +965,6 @@ fun FortuneResultScreen(cardStates: List<CardState>, language: AppLanguage, onRe
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                // Language toggle available only here.
                 Text(
                     text = if (localLanguage == AppLanguage.EN) "EN" else "TH",
                     fontSize = 20.sp,
