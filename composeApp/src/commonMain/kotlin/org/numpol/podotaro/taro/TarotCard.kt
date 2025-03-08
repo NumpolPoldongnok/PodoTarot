@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,6 +80,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
+const val debugMode = false
 // -------------------------------------------------------------------------------------
 // 1) SHUFFLE STEPS
 // -------------------------------------------------------------------------------------
@@ -524,7 +526,7 @@ fun CardShuffleScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFFFFF176), Color(0xFFFFD54F))
+                    colors = listOf(Color(0xFFFFF176), Color(0xFFFFA000))
                 )
             )
     ) {
@@ -553,17 +555,20 @@ fun CardShuffleScreen(
                                 val imageToDraw = if (flipAngle < 90f) frontImages[state.card.id]!! else backImage
                                 drawScaledImage(
                                     image = imageToDraw,
-                                    x = cardWidth * 0.1f,
-                                    y = cardHeight * 0.1f,
+                                    x = cardWidth * 0.15f,
+                                    y = cardHeight * 0.15f,
                                     targetWidth = cardWidth,
                                     targetHeight = cardHeight
                                 )
+                                // TODO - Create debug mode for display card hilight
+                                if (debugMode) {
                                 drawRect(
                                     color = Color.Yellow,
                                     topLeft = Offset.Zero,
                                     size = Size(cardWidth, cardHeight),
                                     style = Stroke(width = 4f)
                                 )
+                                    }
                             }
                         }
                     } else {
@@ -580,17 +585,20 @@ fun CardShuffleScreen(
                                 val imageToDraw = if (flipAngle < 90f) frontImages[state.card.id]!! else backImage
                                 drawScaledImage(
                                     image = imageToDraw,
-                                    x = cardWidth * 0.1f,
-                                    y = cardHeight * 0.1f,
+                                    x = cardWidth * 0.15f,
+                                    y = cardHeight * 0.15f,
                                     targetWidth = cardWidth,
                                     targetHeight = cardHeight
                                 )
-                                drawRect(
-                                    color = Color.Green,
-                                    topLeft = Offset.Zero,
-                                    size = Size(cardWidth, cardHeight),
-                                    style = Stroke(width = 4f)
-                                )
+                                // TODO - Create debug mode for display card hilight
+                                if (debugMode) {
+                                    drawRect(
+                                        color = Color.Blue,
+                                        topLeft = Offset.Zero,
+                                        size = Size(cardWidth, cardHeight),
+                                        style = Stroke(width = 4f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -599,34 +607,9 @@ fun CardShuffleScreen(
         }
 
         // Header Bar with language toggle.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .align(Alignment.TopCenter)
-                .background(Color.DarkGray)
-                .shadow(4.dp)
-        ) {
-            Text(
-                text = headerTitle,
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = if (currentLanguage == AppLanguage.EN) "EN" else "TH",
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-                    .clickable {
-                        currentLanguage = if (currentLanguage == AppLanguage.EN) AppLanguage.TH else AppLanguage.EN
-                    },
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        HeaderAppBar(headerTitle, currentLanguage, onChangeLanguage = {
+            currentLanguage = it
+        })
 
         // Control Buttons.
         if (showControlButton) {
@@ -634,33 +617,10 @@ fun CardShuffleScreen(
                 modifier = Modifier
                     .align(controlButtonAlignment)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (currentStep == ShuffleStep.REVEAL) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val shuffledIndices = cardStates.indices.shuffled()
-                                for ((i, index) in shuffledIndices.withIndex()) {
-                                    fullScreenCard = cardStates[index]
-                                    delay(150)
-                                    if (i == shuffledIndices.lastIndex) {
-                                        animateValue(150) { progress ->
-                                            finalCardScale = 1f + 0.3f * progress
-                                        }
-                                        animateValue(150) { progress ->
-                                            finalCardScale = 1.3f - 0.3f * progress
-                                        }
-                                        finalCardScale = 1f
-                                    } else {
-                                        fullScreenCard = null
-                                    }
-                                }
-                            }
-                        }
-                    ) {
-                        Text("Quick Fortune")
-                    }
                     Button(
                         onClick = {
                             if (!isProcessing) {
@@ -702,6 +662,30 @@ fun CardShuffleScreen(
                         }
                     ) {
                         Text("Merge")
+                    }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val shuffledIndices = cardStates.indices.shuffled()
+                                for ((i, index) in shuffledIndices.withIndex()) {
+                                    fullScreenCard = cardStates[index]
+                                    delay(150)
+                                    if (i == shuffledIndices.lastIndex) {
+                                        animateValue(150) { progress ->
+                                            finalCardScale = 1f + 0.3f * progress
+                                        }
+                                        animateValue(150) { progress ->
+                                            finalCardScale = 1.3f - 0.3f * progress
+                                        }
+                                        finalCardScale = 1f
+                                    } else {
+                                        fullScreenCard = null
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Quick Fortune")
                     }
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
@@ -925,3 +909,4 @@ fun CardShuffleScreen(
         }
     }
 }
+
