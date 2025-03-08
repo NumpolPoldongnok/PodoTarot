@@ -170,7 +170,9 @@ fun FortuneResultScreen(
         }
         // Full-screen overlay: show the card image in full screen when tapped.
         if (fullScreenCard != null) {
-            FullScreenCardView(fullScreenCard!!, onClick = {
+            FullScreenCardView(fullScreenCard!!,
+                currentLanguage = localLanguage,
+                onClick = {
                 fullScreenCard = null
             })
         }

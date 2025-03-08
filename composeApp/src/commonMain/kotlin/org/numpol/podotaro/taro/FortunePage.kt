@@ -68,7 +68,7 @@ fun FortunePage(
         Text(
             text = cardState.card.description,
             style = MaterialTheme.typography.headlineSmall,
-            color = Color.LightGray,
+            color = Color.White,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -79,7 +79,7 @@ fun FortunePage(
         Text(
             text = details.firstOrNull() ?: "",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray,
+            color = Color.LightGray,
             textAlign = TextAlign.Center
         )
     }

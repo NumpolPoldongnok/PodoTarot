@@ -14,8 +14,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,11 +40,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -216,6 +219,11 @@ fun CardShuffleScreen(
     // Additional state for special scaling effect on final card.
     var finalCardScale by remember { mutableStateOf(1f) }
 
+    // Additional state for the Reveal Selected button and its pulse echo effect.
+    var revealButtonVisible by remember { mutableStateOf(true) }
+    var showPulse by remember { mutableStateOf(false) }
+    var pulseProgress by remember { mutableStateOf(0f) }
+
     // Initial grid layout – cards start with their back showing.
     var cardStates by remember {
         mutableStateOf(
@@ -245,8 +253,6 @@ fun CardShuffleScreen(
 
     var showFortuneScreen by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
-
-    // Flag to ensure auto-flip runs only once per REVEAL state.
     var autoFlipped by remember { mutableStateOf(false) }
 
     // Full-screen card state for individual card view.
@@ -314,26 +320,19 @@ fun CardShuffleScreen(
                         if (transformedOffset.x in state.x..(state.x + cardWidth) &&
                             transformedOffset.y in state.y..(state.y + cardHeight)
                         ) {
-                            // Only allow selection if not already selected and less than 5 cards selected.
                             if (!state.selected && cardStates.count { it.selected } < 5) {
                                 updateCard(i) { it.copy(selected = true) }
-                                // Get all selected card indices.
                                 val selectedIndices = cardStates.withIndex()
                                     .filter { it.value.selected }
                                     .map { it.index }
                                 val selectedCount = selectedIndices.size
-                                // Define the bottom-center pivot and the target position (top-left)
-                                // so that the card's bottom-center lands at the pivot.
                                 val bottomCenterPivot = Offset(canvasSize.width / 2, canvasSize.height * 0.8f)
                                 val targetPosition = bottomCenterPivot - Offset(cardWidth / 2, cardHeight)
-                                // Define the total fan angle (in degrees).
                                 val totalFanAngle = 40f
-                                // For each selected card, compute its target rotation.
                                 for ((j, idx) in selectedIndices.withIndex()) {
                                     val targetRotation = if (selectedCount == 1) {
                                         0f
                                     } else {
-                                        // Evenly spread angles from -totalFanAngle/2 to +totalFanAngle/2.
                                         -totalFanAngle / 2 + (totalFanAngle * j / (selectedCount - 1))
                                     }
                                     scope.launch {
@@ -542,7 +541,6 @@ fun CardShuffleScreen(
             }) {
                 cardStates.forEachIndexed { i, state ->
                     if (state.selected) {
-                        // For selected cards: rotate about the bottom-center to fan them out.
                         withTransform({
                             translate(left = state.x, top = state.y)
                             rotate(degrees = state.rotation, pivot = Offset(cardWidth / 2, cardHeight))
@@ -560,19 +558,17 @@ fun CardShuffleScreen(
                                     targetWidth = cardWidth,
                                     targetHeight = cardHeight
                                 )
-                                // TODO - Create debug mode for display card hilight
                                 if (debugMode) {
-                                drawRect(
-                                    color = Color.Yellow,
-                                    topLeft = Offset.Zero,
-                                    size = Size(cardWidth, cardHeight),
-                                    style = Stroke(width = 4f)
-                                )
-                                    }
+                                    drawRect(
+                                        color = Color.Yellow,
+                                        topLeft = Offset.Zero,
+                                        size = Size(cardWidth, cardHeight),
+                                        style = Stroke(width = 4f)
+                                    )
+                                }
                             }
                         }
                     } else {
-                        // For unselected cards: rotate about the center.
                         withTransform({
                             translate(left = state.x, top = state.y)
                             rotate(degrees = state.rotation, pivot = Offset(cardWidth / 2, cardHeight / 2))
@@ -590,7 +586,6 @@ fun CardShuffleScreen(
                                     targetWidth = cardWidth,
                                     targetHeight = cardHeight
                                 )
-                                // TODO - Create debug mode for display card hilight
                                 if (debugMode) {
                                     drawRect(
                                         color = Color.Blue,
@@ -690,105 +685,131 @@ fun CardShuffleScreen(
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
                     val buttonText = if (selectedCount > 0) "Reveal Selected" else "Select 1-5 Cards"
-                    Button(
-                        onClick = {
-                            if (!isProcessing) {
-                                isProcessing = true
-                                scope.launch {
-                                    if (cardStates.any { it.selected }) {
-                                        val selectedIndices = cardStates.withIndex()
-                                            .filter { it.value.selected }
-                                            .map { it.index }
-                                        val unselectedIndices = cardStates.withIndex()
-                                            .filter { !it.value.selected }
-                                            .map { it.index }
-
-                                        // Animate unselected cards off-screen by scattering them farther out.
-                                        val offScreenJobs = unselectedIndices.map { i ->
-                                            launch {
-                                                val startX = cardStates[i].x
-                                                val startY = cardStates[i].y
-                                                val angle = Random.nextDouble(0.0, 2.0 * PI)
-                                                val distance = 800f  // Increased distance for unused cards.
-                                                val targetX = startX + (distance * cos(angle)).toFloat()
-                                                val targetY = startY + (distance * sin(angle)).toFloat()
+                    if (revealButtonVisible) {
+                        Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+                            Button(
+                                onClick = {
+                                    if (!isProcessing) {
+                                        isProcessing = true
+                                        scope.launch {
+                                            if (selectedCount > 0) {
+                                                // Trigger pulse fadeout (water wave echo) effect.
+                                                showPulse = true
                                                 animateValue(500) { progress ->
-                                                    val newX = startX + (targetX - startX) * progress
-                                                    val newY = startY + (targetY - startY) * progress
-                                                    updateCard(i) { it.copy(x = newX, y = newY) }
+                                                    pulseProgress = progress
+                                                }
+                                                showPulse = false
+                                                revealButtonVisible = false
+
+                                                // --- Continue with your existing "Reveal Selected" animation logic ---
+                                                if (cardStates.any { it.selected }) {
+                                                    val selectedIndices = cardStates.withIndex()
+                                                        .filter { it.value.selected }
+                                                        .map { it.index }
+                                                    val unselectedIndices = cardStates.withIndex()
+                                                        .filter { !it.value.selected }
+                                                        .map { it.index }
+                                                    val offScreenJobs = unselectedIndices.map { i ->
+                                                        launch {
+                                                            val startX = cardStates[i].x
+                                                            val startY = cardStates[i].y
+                                                            val angle = Random.nextDouble(0.0, 2.0 * PI)
+                                                            val distance = 800f
+                                                            val targetX = startX + (distance * cos(angle)).toFloat()
+                                                            val targetY = startY + (distance * sin(angle)).toFloat()
+                                                            animateValue(500) { progress ->
+                                                                val newX = startX + (targetX - startX) * progress
+                                                                val newY = startY + (targetY - startY) * progress
+                                                                updateCard(i) { it.copy(x = newX, y = newY) }
+                                                            }
+                                                        }
+                                                    }
+                                                    offScreenJobs.forEach { it.join() }
+
+                                                    val centerX = canvasSize.width / 2 - cardWidth / 2
+                                                    val centerY = canvasSize.height / 2 - cardHeight / 2
+                                                    val targetPositions = when (selectedIndices.size) {
+                                                        1 -> listOf(Offset(centerX, centerY))
+                                                        2 -> listOf(
+                                                            Offset(centerX, centerY - cardHeight / 2 - spacing),
+                                                            Offset(centerX, centerY + cardHeight / 2 + spacing)
+                                                        )
+                                                        3 -> listOf(
+                                                            Offset(centerX, centerY - cardHeight),
+                                                            Offset(centerX - cardWidth - spacing, centerY + cardHeight / 4),
+                                                            Offset(centerX + cardWidth + spacing, centerY + cardHeight / 4)
+                                                        )
+                                                        4 -> {
+                                                            val offsetX = cardWidth / 2 + spacing / 2
+                                                            val offsetY = cardHeight / 2 + spacing / 2
+                                                            listOf(
+                                                                Offset(centerX - offsetX, centerY - offsetY),
+                                                                Offset(centerX + offsetX, centerY - offsetY),
+                                                                Offset(centerX - offsetX, centerY + offsetY),
+                                                                Offset(centerX + offsetX, centerY + offsetY)
+                                                            )
+                                                        }
+                                                        5 -> listOf(
+                                                            Offset(centerX, centerY),
+                                                            Offset(centerX, centerY - cardHeight - spacing),
+                                                            Offset(centerX, centerY + cardHeight + spacing),
+                                                            Offset(centerX - cardWidth - spacing, centerY),
+                                                            Offset(centerX + cardWidth + spacing, centerY)
+                                                        )
+                                                        else -> emptyList()
+                                                    }
+                                                    val repositionJobs = selectedIndices.mapIndexed { index, i ->
+                                                        launch {
+                                                            val startX = cardStates[i].x
+                                                            val startY = cardStates[i].y
+                                                            val target = targetPositions.getOrElse(index) { Offset(centerX, centerY) }
+                                                            animateValue(500) { progress ->
+                                                                val newX = startX + (target.x - startX) * progress
+                                                                val newY = startY + (target.y - startY) * progress
+                                                                updateCard(i) { it.copy(x = newX, y = newY, rotation = 0f, handIndex = index) }
+                                                            }
+                                                        }
+                                                    }
+                                                    repositionJobs.forEach { it.join() }
+
+                                                    val flipJobs = selectedIndices.map { i ->
+                                                        launch {
+                                                            animateValue(500) { progress ->
+                                                                val angle = 180f - progress * 180f
+                                                                updateCard(i) { it.copy(flipAngle = angle) }
+                                                            }
+                                                            updateCard(i) { it.copy(faceUp = true) }
+                                                        }
+                                                    }
+                                                    flipJobs.forEach { it.join() }
+
+                                                    currentStep = ShuffleStep.REVEAL_SELECTED
                                                 }
                                             }
+                                            isProcessing = false
                                         }
-                                        offScreenJobs.forEach { it.join() }
-
-                                        // Reposition selected cards and assign a handIndex.
-                                        val selectedCount = selectedIndices.size
-                                        val centerX = canvasSize.width / 2 - cardWidth / 2
-                                        val centerY = canvasSize.height / 2 - cardHeight / 2
-                                        val targetPositions = when (selectedCount) {
-                                            1 -> listOf(Offset(centerX, centerY))
-                                            2 -> listOf(
-                                                Offset(centerX, centerY - cardHeight / 2 - spacing),
-                                                Offset(centerX, centerY + cardHeight / 2 + spacing)
-                                            )
-                                            3 -> listOf(
-                                                Offset(centerX, centerY - cardHeight),
-                                                Offset(centerX - cardWidth - spacing, centerY + cardHeight / 4),
-                                                Offset(centerX + cardWidth + spacing, centerY + cardHeight / 4)
-                                            )
-                                            4 -> {
-                                                val offsetX = cardWidth / 2 + spacing / 2
-                                                val offsetY = cardHeight / 2 + spacing / 2
-                                                listOf(
-                                                    Offset(centerX - offsetX, centerY - offsetY),
-                                                    Offset(centerX + offsetX, centerY - offsetY),
-                                                    Offset(centerX - offsetX, centerY + offsetY),
-                                                    Offset(centerX + offsetX, centerY + offsetY)
-                                                )
-                                            }
-                                            5 -> listOf(
-                                                Offset(centerX, centerY),
-                                                Offset(centerX, centerY - cardHeight - spacing),
-                                                Offset(centerX, centerY + cardHeight + spacing),
-                                                Offset(centerX - cardWidth - spacing, centerY),
-                                                Offset(centerX + cardWidth + spacing, centerY)
-                                            )
-                                            else -> emptyList()
-                                        }
-                                        val repositionJobs = selectedIndices.mapIndexed { index, i ->
-                                            launch {
-                                                val startX = cardStates[i].x
-                                                val startY = cardStates[i].y
-                                                val target = targetPositions.getOrElse(index) { Offset(centerX, centerY) }
-                                                animateValue(500) { progress ->
-                                                    val newX = startX + (target.x - startX) * progress
-                                                    val newY = startY + (target.y - startY) * progress
-                                                    updateCard(i) { it.copy(x = newX, y = newY, rotation = 0f, handIndex = index) }
-                                                }
-                                            }
-                                        }
-                                        repositionJobs.forEach { it.join() }
-
-                                        // Flip selected cards from back to front.
-                                        val flipJobs = selectedIndices.map { i ->
-                                            launch {
-                                                animateValue(500) { progress ->
-                                                    val angle = 180f - progress * 180f
-                                                    updateCard(i) { it.copy(flipAngle = angle) }
-                                                }
-                                                updateCard(i) { it.copy(faceUp = true) }
-                                            }
-                                        }
-                                        flipJobs.forEach { it.join() }
-
-                                        currentStep = ShuffleStep.REVEAL_SELECTED
                                     }
-                                    isProcessing = false
+                                },
+                                shape = CircleShape,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Text(text = buttonText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center)
+                            }
+                            if (showPulse) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val baseRadius = size.minDimension / 2
+                                    val currentRadius = baseRadius * (1f + pulseProgress * 2f)
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = (1f - pulseProgress) * 0.5f),
+                                        radius = currentRadius,
+                                        center = center,
+                                        style = Stroke(width = 4f)
+                                    )
                                 }
                             }
                         }
-                    ) {
-                        Text(buttonText)
                     }
                 } else if (currentStep == ShuffleStep.REVEAL_SELECTED) {
                     Row(
@@ -821,10 +842,17 @@ fun CardShuffleScreen(
                                         flipAngle = 180f
                                     )
                                 }
+                                // Reset extra states on restart.
                                 currentStep = ShuffleStep.REVEAL
+                                revealButtonVisible = true
+                                showPulse = false
+                                pulseProgress = 0f
+                                autoFlipped = false
                             }
                         ) {
-                            Text("Restart")
+                            Text(text = "Restart",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center)
                         }
                     }
                 }
@@ -860,53 +888,22 @@ fun CardShuffleScreen(
                             flipAngle = 180f
                         )
                     }
+                    // Reset all extra states.
                     currentStep = ShuffleStep.REVEAL
                     showFortuneScreen = false
+                    revealButtonVisible = true
+                    showPulse = false
+                    pulseProgress = 0f
+                    autoFlipped = false
                 }
             )
         }
-        // Else show individual full-screen card view if set.
         else if (fullScreenCard != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.8f))
-                    .clickable { fullScreenCard = null },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Image(
-                        bitmap = loadFrontImage(fullScreenCard!!.card.drawable),
-                        contentDescription = fullScreenCard!!.card.description,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .scale(finalCardScale)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.DarkGray.copy(alpha = 0.7f))
-                            .padding(16.dp)
-                    ) {
-                        val details = if (currentLanguage == AppLanguage.EN)
-                            getCardDetailsEnglish(fullScreenCard!!.card)
-                        else
-                            getCardDetailsThai(fullScreenCard!!.card)
-                        Text(
-                            text = details.firstOrNull() ?: fullScreenCard!!.card.description,
-                            color = Color.White,
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-            }
+            FullScreenCardView(fullScreenCard!!,
+                currentLanguage = currentLanguage,
+                onClick = {
+                fullScreenCard = null
+            })
         }
     }
 }
-
