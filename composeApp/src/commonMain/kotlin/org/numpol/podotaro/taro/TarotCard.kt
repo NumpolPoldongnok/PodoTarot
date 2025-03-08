@@ -1,5 +1,6 @@
 package org.numpol.podotaro.taro
 
+import FortuneResultScreen
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
