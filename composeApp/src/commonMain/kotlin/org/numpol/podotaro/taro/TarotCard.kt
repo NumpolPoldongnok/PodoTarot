@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,11 +16,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,14 +47,16 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
 import podotaro.composeapp.generated.resources.Res
@@ -84,6 +90,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 const val debugMode = false
+
 // -------------------------------------------------------------------------------------
 // 1) SHUFFLE STEPS
 // -------------------------------------------------------------------------------------
@@ -187,7 +194,17 @@ fun DrawScope.drawScaledImage(
 enum class AppLanguage { EN, TH }
 
 // -------------------------------------------------------------------------------------
-// 6) COMPOSABLE: CardShuffleScreen
+// 6) HISTORY RECORD DATA CLASS (using kotlinx-datetime)
+// -------------------------------------------------------------------------------------
+
+data class FortuneRecord(
+    val id: Int,
+    val timestamp: Instant,
+    val cardStates: List<CardState>
+)
+
+// -------------------------------------------------------------------------------------
+// 7) CARD STATE DATA CLASS
 // -------------------------------------------------------------------------------------
 
 data class CardState(
@@ -202,6 +219,10 @@ data class CardState(
     var flipAngle: Float = 0f  // 0 = front, 180 = back
 )
 
+// -------------------------------------------------------------------------------------
+// 8) COMPOSABLE: CardShuffleScreen
+// -------------------------------------------------------------------------------------
+
 @Composable
 fun CardShuffleScreen(
     tarotCards: List<TarotCard> = allTarotCards
@@ -210,21 +231,13 @@ fun CardShuffleScreen(
     val cardHeight = 220f
     val spacing = 20f
 
-    // In-app language state.
     var currentLanguage by remember { mutableStateOf(AppLanguage.EN) }
-
-    // Control button visibility.
     var showControlButton by remember { mutableStateOf(true) }
-
-    // Additional state for special scaling effect on final card.
     var finalCardScale by remember { mutableStateOf(1f) }
-
-    // Additional state for the Reveal Selected button and its pulse echo effect.
     var revealButtonVisible by remember { mutableStateOf(true) }
     var showPulse by remember { mutableStateOf(false) }
     var pulseProgress by remember { mutableStateOf(0f) }
 
-    // Initial grid layout – cards start with their back showing.
     var cardStates by remember {
         mutableStateOf(
             tarotCards.mapIndexed { index, card ->
@@ -244,19 +257,21 @@ fun CardShuffleScreen(
         )
     }
 
-    // State machine.
     var currentStep by remember { mutableStateOf(ShuffleStep.REVEAL) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
     var cameraOffset by remember { mutableStateOf(Offset.Zero) }
-    var cameraScale by remember { mutableStateOf(2f) } // initial value; will be animated based on state
+    var cameraScale by remember { mutableStateOf(2f) }
     val scope = rememberCoroutineScope()
 
     var showFortuneScreen by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var autoFlipped by remember { mutableStateOf(false) }
-
-    // Full-screen card state for individual card view.
     var fullScreenCard by remember { mutableStateOf<CardState?>(null) }
+
+    // ----- HISTORY STATE VARIABLES -----
+    val fortuneHistory = remember { mutableStateListOf<FortuneRecord>() }
+    var fortuneRecordToShow by remember { mutableStateOf<FortuneRecord?>(null) }
+    var showHistoryScreen by remember { mutableStateOf(false) }
 
     // Pre-calculate images.
     val frontImages = tarotCards.associate { card ->
@@ -270,13 +285,11 @@ fun CardShuffleScreen(
         cardStates = list
     }
 
-    // Helper for converting pointer offsets.
     fun convertPointerOffset(offset: Offset): Offset {
         val pivot = Offset(canvasSize.width / 2, canvasSize.height / 2)
         return pivot + (offset - cameraOffset - pivot) / cameraScale
     }
 
-    // Base pointer input for camera dragging.
     var pointerModifier = Modifier.pointerInput(currentStep) {
         detectDragGestures { change, dragAmount ->
             cameraOffset += dragAmount
@@ -284,7 +297,6 @@ fun CardShuffleScreen(
         }
     }
 
-    // In REVEAL state: tap on a face‑up card to view it full‑screen.
     if (currentStep == ShuffleStep.REVEAL) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
@@ -305,11 +317,6 @@ fun CardShuffleScreen(
         )
     }
 
-    // ---------------------------------------------------------------------------------
-    // Updated Pointer Input for DEAL state:
-    // When a card is tapped it will move to the bottom-center and fan out.
-    // Also, do not allow more than 5 selections.
-    // ---------------------------------------------------------------------------------
     if (currentStep == ShuffleStep.DEAL) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
@@ -357,7 +364,6 @@ fun CardShuffleScreen(
         )
     }
 
-    // In REVEAL_SELECTED state: tap on a revealed card to open FortuneResultScreen.
     if (currentStep == ShuffleStep.REVEAL_SELECTED) {
         pointerModifier = pointerModifier.then(
             Modifier.pointerInput(currentStep) {
@@ -379,7 +385,6 @@ fun CardShuffleScreen(
         )
     }
 
-    // Animate camera reset on state changes.
     LaunchedEffect(currentStep) {
         val startOffset = cameraOffset
         val startScale = cameraScale
@@ -397,7 +402,6 @@ fun CardShuffleScreen(
         }
     }
 
-    // Once canvas size is known and in REVEAL state, re-center the grid.
     LaunchedEffect(canvasSize) {
         if (canvasSize != Size.Zero && currentStep == ShuffleStep.REVEAL) {
             val columns = 5
@@ -422,7 +426,6 @@ fun CardShuffleScreen(
         }
     }
 
-    // Sequential auto-flip in REVEAL state.
     LaunchedEffect(currentStep) {
         if (currentStep == ShuffleStep.REVEAL && !autoFlipped) {
             delay(500)
@@ -447,7 +450,6 @@ fun CardShuffleScreen(
         }
     }
 
-    // Auto-run shuffle animation when in SHUFFLE state.
     LaunchedEffect(currentStep) {
         if (currentStep == ShuffleStep.SHUFFLE) {
             showControlButton = false
@@ -503,7 +505,6 @@ fun CardShuffleScreen(
         showControlButton = currentStep != ShuffleStep.SHUFFLE
     }
 
-    // Update header title based on state.
     val headerTitle = when (currentStep) {
         ShuffleStep.REVEAL -> "Card Preview"
         ShuffleStep.SHUFFLE -> "Shuffling Cards"
@@ -511,9 +512,6 @@ fun CardShuffleScreen(
         ShuffleStep.REVEAL_SELECTED -> "Cards Revealed"
     }
 
-    // --- Alignment Logic ---
-    // In DEAL state, the "Reveal Selected" button is centered.
-    // In REVEAL_SELECTED state, the "See all" and "Restart" buttons are at the bottom.
     val controlButtonAlignment = when (currentStep) {
         ShuffleStep.DEAL -> Alignment.Center
         ShuffleStep.REVEAL_SELECTED -> Alignment.BottomCenter
@@ -677,10 +675,24 @@ fun CardShuffleScreen(
                                         fullScreenCard = null
                                     }
                                 }
+                                // Record history for Quick Fortune (1 card)
+                                fullScreenCard?.let { finalCard ->
+                                    val record = FortuneRecord(
+                                        id = fortuneHistory.size,
+                                        timestamp = Clock.System.now(),
+                                        cardStates = listOf(finalCard.copy())
+                                    )
+                                    fortuneHistory.add(record)
+                                    fortuneRecordToShow = record
+                                    showFortuneScreen = true
+                                }
                             }
                         }
                     ) {
                         Text("Quick Fortune")
+                    }
+                    Button(onClick = { showHistoryScreen = true }) {
+                        Text("History")
                     }
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
@@ -693,7 +705,6 @@ fun CardShuffleScreen(
                                         isProcessing = true
                                         scope.launch {
                                             if (selectedCount > 0) {
-                                                // Trigger pulse fadeout (water wave echo) effect.
                                                 showPulse = true
                                                 animateValue(500) { progress ->
                                                     pulseProgress = progress
@@ -701,7 +712,6 @@ fun CardShuffleScreen(
                                                 showPulse = false
                                                 revealButtonVisible = false
 
-                                                // --- Continue with your existing "Reveal Selected" animation logic ---
                                                 if (cardStates.any { it.selected }) {
                                                     val selectedIndices = cardStates.withIndex()
                                                         .filter { it.value.selected }
@@ -783,6 +793,16 @@ fun CardShuffleScreen(
                                                     }
                                                     flipJobs.forEach { it.join() }
 
+                                                    // Record history for Card Revealed (multiple cards)
+                                                    val revealedStates = cardStates.filter { it.selected }
+                                                    val record = FortuneRecord(
+                                                        id = fortuneHistory.size,
+                                                        timestamp = Clock.System.now(),
+                                                        cardStates = revealedStates.map { it.copy() }
+                                                    )
+                                                    fortuneHistory.add(record)
+                                                    fortuneRecordToShow = record
+
                                                     currentStep = ShuffleStep.REVEAL_SELECTED
                                                 }
                                             }
@@ -793,9 +813,11 @@ fun CardShuffleScreen(
                                 shape = CircleShape,
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                Text(text = buttonText,
+                                Text(
+                                    text = buttonText,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center)
+                                    textAlign = TextAlign.Center
+                                )
                             }
                             if (showPulse) {
                                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -842,7 +864,6 @@ fun CardShuffleScreen(
                                         flipAngle = 180f
                                     )
                                 }
-                                // Reset extra states on restart.
                                 currentStep = ShuffleStep.REVEAL
                                 revealButtonVisible = true
                                 showPulse = false
@@ -850,21 +871,26 @@ fun CardShuffleScreen(
                                 autoFlipped = false
                             }
                         ) {
-                            Text(text = "Restart",
+                            Text(
+                                text = "Restart",
                                 style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center)
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
             }
         }
 
-        // Display FortuneResultScreen overlay if requested.
+        // ------------------------------
+        // FortuneResultScreen Overlay
+        // ------------------------------
         if (showFortuneScreen) {
-            val revealedCards = cardStates.filter { it.selected && it.handIndex != null }
-                .sortedBy { it.handIndex }
+            val cardStatesToShow = fortuneRecordToShow?.cardStates
+                ?: cardStates.filter { it.selected && it.handIndex != null }
+                    .sortedBy { it.handIndex }
             FortuneResultScreen(
-                cardStates = revealedCards,
+                cardStates = cardStatesToShow,
                 language = currentLanguage,
                 onRestart = {
                     val columns = 5
@@ -888,22 +914,42 @@ fun CardShuffleScreen(
                             flipAngle = 180f
                         )
                     }
-                    // Reset all extra states.
                     currentStep = ShuffleStep.REVEAL
                     showFortuneScreen = false
                     revealButtonVisible = true
                     showPulse = false
                     pulseProgress = 0f
                     autoFlipped = false
+                    fortuneRecordToShow = null
                 }
             )
         }
+        // ------------------------------
+        // Full Screen Card View Overlay.
+        // ------------------------------
         else if (fullScreenCard != null) {
-            FullScreenCardView(fullScreenCard!!,
+            FullScreenCardView(
+                fullScreenCard!!,
                 currentLanguage = currentLanguage,
-                onClick = {
-                fullScreenCard = null
-            })
+                onClick = { fullScreenCard = null }
+            )
+        }
+
+        // ------------------------------
+        // History Screen Overlay.
+        // ------------------------------
+        if (showHistoryScreen) {
+            HistoryScreen(
+                history = fortuneHistory,
+                onSelect = { record ->
+                    fortuneRecordToShow = record
+                    showFortuneScreen = true
+                    showHistoryScreen = false
+                },
+                onClose = {
+                    showHistoryScreen = false
+                }
+            )
         }
     }
 }
