@@ -98,7 +98,6 @@ fun CardShuffleScreen(
     var cameraScale by remember { mutableStateOf(2f) }
     val scope = rememberCoroutineScope()
 
-    var showFortuneScreen by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var autoFlipped by remember { mutableStateOf(false) }
     var fullScreenCard by remember { mutableStateOf<CardState?>(null) }
@@ -214,8 +213,7 @@ fun CardShuffleScreen(
                             transformedOffset.y in state.y..(state.y + cardHeight) &&
                             state.faceUp
                         ) {
-                            fullScreenCard = null
-                            showFortuneScreen = true
+                            onShowFortune(fortuneHistory.last())
                             break
                         }
                     }
@@ -466,7 +464,7 @@ fun CardShuffleScreen(
                                         cardStates = listOf(finalCard.copy())
                                     )
                                     fortuneHistory.add(record)
-                                    showFortuneScreen = true
+                                    onShowFortune(record)
                                 }
                             }
                         }
@@ -606,7 +604,6 @@ fun CardShuffleScreen(
                                                             cardStates = revealedStates.map { it.copy() }
                                                         )
                                                     fortuneHistory.add(record)
-
                                                     currentStep = ShuffleStep.REVEAL_SELECTED
                                                 }
                                             }
@@ -642,7 +639,9 @@ fun CardShuffleScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Button(onClick = { fullScreenCard = null; showFortuneScreen = true }) {
+                        Button(onClick = {
+                            onShowFortune(fortuneHistory.last())
+                        }) {
                             Text("See all")
                         }
                         Button(
@@ -658,18 +657,10 @@ fun CardShuffleScreen(
                 }
             }
         }
-
-        // ------------------------------
-        // FortuneResultScreen Overlay
-        // ------------------------------
-        if (showFortuneScreen) {
-            val fortuneRecord = fortuneHistory.last()
-            onShowFortune(fortuneRecord)
-        }
         // ------------------------------
         // Full Screen Card View Overlay.
         // ------------------------------
-        else if (fullScreenCard != null) {
+        if (fullScreenCard != null) {
             FullScreenCardView(
                 fullScreenCard!!,
                 currentLanguage = currentLanguage,

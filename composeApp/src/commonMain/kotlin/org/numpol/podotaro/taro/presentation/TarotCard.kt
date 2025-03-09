@@ -35,7 +35,7 @@ import podotaro.composeapp.generated.resources.the_tower
 import podotaro.composeapp.generated.resources.the_world
 import podotaro.composeapp.generated.resources.wheel_of_fortune
 
-const val debugMode = false
+const val debugMode = true
 
 // -------------------------------------------------------------------------------------
 // 1) SHUFFLE STEPS
