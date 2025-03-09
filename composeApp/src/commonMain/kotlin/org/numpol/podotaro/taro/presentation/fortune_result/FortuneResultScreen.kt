@@ -23,26 +23,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.numpol.podotaro.taro.presentation.AppLanguage
-import org.numpol.podotaro.taro.presentation.CardState
+import org.numpol.podotaro.taro.presentation.TarotCard
 import org.numpol.podotaro.taro.presentation.components.FullScreenCardView
 import org.numpol.podotaro.taro.presentation.components.HeaderAppBar
+import org.numpol.podotaro.taro.presentation.majorArcanaCards
 import kotlin.math.abs
 
 @Composable
 fun FortuneResultScreen(
-    cardStates: List<CardState>,
+    cardIds: List<String>,
     language: AppLanguage,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
+    tarotCards: List<TarotCard> = majorArcanaCards
 ) {
     var localLanguage by remember { mutableStateOf(language) }
-    var fullScreenCard by remember { mutableStateOf<CardState?>(null) }
+    var fullScreenCard by remember { mutableStateOf<TarotCard?>(null) }
     // Pager state with total pages equal to the number of cards.
-    val pagerState = rememberPagerState(initialPage = 0) { cardStates.size }
+    val pagerState = rememberPagerState(initialPage = 0) { cardIds.size }
     val coroutineScope = rememberCoroutineScope()
 
     // Define spread meanings based on language and card count.
     val spreadMeanings = if (localLanguage == AppLanguage.EN) {
-        when (cardStates.size) {
+        when (cardIds.size) {
             1 -> listOf("Overall daily fortune")
             2 -> listOf("Your journey ahead", "Your health and vitality")
             3 -> listOf("Travel and adventure", "Health and well-being", "Career and work")
@@ -51,7 +53,7 @@ fun FortuneResultScreen(
             else -> emptyList()
         }
     } else {
-        when (cardStates.size) {
+        when (cardIds.size) {
             1 -> listOf("โชคชะตารายวันโดยรวม")
             2 -> listOf("เส้นทางข้างหน้า", "สุขภาพและความมีชีวิตชีวา")
             3 -> listOf("การเดินทางและการผจญภัย", "สุขภาพและความเป็นอยู่ที่ดี", "อาชีพและการทำงาน")
@@ -61,7 +63,7 @@ fun FortuneResultScreen(
         }
     }
     // Decide button text based on current page.
-    val isLastPage = pagerState.currentPage == cardStates.size - 1
+    val isLastPage = pagerState.currentPage == cardIds.size - 1
     val buttonText = if (isLastPage) {
         if (localLanguage == AppLanguage.EN) "Restart" else "เริ่มใหม่"
     } else {
@@ -90,15 +92,16 @@ fun FortuneResultScreen(
                     contentPadding = PaddingValues(horizontal = 60.dp),
                     pageSpacing = 0.dp
                 ) { page ->
-                    val cardState = cardStates[page]
+                    val cardId = cardIds[page]
                     // Compute page offset for any scaling/transition effects.
                     val pageOffset = abs((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                    val tarotCard = tarotCards.first { it.id.toString() == cardId}
                     FortunePage(
                         page = page,
-                        cardState = cardState,
+                        tarotCard = tarotCard,
                         pageOffset = pageOffset,
                         spreadMeaning = spreadMeanings.getOrElse(page) { "" },
-                        onClickCard = { fullScreenCard = cardState },
+                        onClickCard = { fullScreenCard = tarotCard },
                         localLanguage = localLanguage
                     )
                 }

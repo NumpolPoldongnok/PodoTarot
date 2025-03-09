@@ -7,7 +7,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [FortuneRecordEntity::class],
-    version = 1
+    version = 2
 )
 @TypeConverters(
     StringListTypeConverter::class

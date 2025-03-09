@@ -1,7 +1,7 @@
 package org.numpol.podotaro.taro.presentation.main
 
 import org.numpol.podotaro.taro.presentation.CardState
-import org.numpol.podotaro.taro.presentation.FortuneRecord
+import org.numpol.podotaro.taro.domain.FortuneRecord
 
 // --- Navigation State ---
 sealed interface TarotScreen {

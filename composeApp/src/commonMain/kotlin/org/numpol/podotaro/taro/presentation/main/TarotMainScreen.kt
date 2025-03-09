@@ -2,11 +2,14 @@ package org.numpol.podotaro.taro.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.numpol.podotaro.taro.presentation.card_shuffle.CardShuffleScreen
 import org.numpol.podotaro.taro.presentation.components.FullScreenCardView
 import org.numpol.podotaro.taro.presentation.fortune_result.FortuneResultScreen
 import org.numpol.podotaro.taro.presentation.history.HistoryScreen
+import org.numpol.podotaro.taro.presentation.main.TarotMainAction
 import org.numpol.podotaro.taro.presentation.main.TarotScreen
 import org.numpol.podotaro.taro.presentation.main.TarotMainViewModel
 
@@ -15,41 +18,63 @@ fun TarotMainScreen(
     tarotCards: List<TarotCard> = allTarotCards,
     viewModel: TarotMainViewModel = koinViewModel(),
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
     when (val screen = viewModel.currentScreen) {
         is TarotScreen.Home -> {
             LaunchedEffect(true) {
                 // Delay for a splash effect, then navigate to shuffle.
-                viewModel.navigateToShuffle()
+                viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
             }
         }
+
         is TarotScreen.Shuffle -> {
             CardShuffleScreen(
                 tarotCards = tarotCards,
-                fortuneHistory = viewModel.fortuneHistory,
-                onShowHistory = { viewModel.navigateToHistory() },
-                onShowFortune = { fortuneRecord -> viewModel.navigateToFortune(fortuneRecord) },
-                onRestart = { viewModel.restart() }
+                onShowHistory = {
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.History))
+                },
+                onShowFortune = { fortuneRecord ->
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Fortune(fortuneRecord)))
+                },
+                onRestart = {
+                    viewModel.onAction(TarotMainAction.OnRestart)
+                }
             )
         }
+
         is TarotScreen.FullScreen -> {
             FullScreenCardView(
-                cardState = screen.cardState,
-                currentLanguage = AppLanguage.EN,
-                onClick = { viewModel.navigateToShuffle() }
+                tarotCard = screen.cardState.card,
+                currentLanguage = state.language,
+                onClick = {
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
+                }
             )
         }
+
         is TarotScreen.History -> {
             HistoryScreen(
-                history = viewModel.fortuneHistory,
-                onSelect = { record -> viewModel.navigateToFortune(record) },
-                onClose = { viewModel.navigateToShuffle() }
+                history = state.fortuneRecords,
+                onSelect = { record ->
+                    //viewModel.navigateToFortune(record)
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Fortune(record)))
+                },
+                onClose = {
+                    //viewModel.navigateToShuffle()
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
+                }
             )
         }
+
         is TarotScreen.Fortune -> {
             FortuneResultScreen(
-                cardStates = screen.fortuneRecord.cardStates,
+                cardIds = screen.fortuneRecord.cards,
                 language = AppLanguage.EN,
-                onRestart = { viewModel.navigateToShuffle() }
+                onRestart = {
+                    //viewModel.navigateToShuffle()
+                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
+                },
             )
         }
     }

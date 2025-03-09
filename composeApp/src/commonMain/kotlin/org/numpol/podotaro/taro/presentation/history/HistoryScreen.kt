@@ -25,13 +25,16 @@ import androidx.compose.ui.unit.sp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.imageResource
-import org.numpol.podotaro.taro.presentation.FortuneRecord
+import org.numpol.podotaro.taro.domain.FortuneRecord
+import org.numpol.podotaro.taro.presentation.TarotCard
+import org.numpol.podotaro.taro.presentation.majorArcanaCards
 
 @Composable
 fun HistoryScreen(
     history: List<FortuneRecord>,
     onSelect: (FortuneRecord) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    tarotCards: List<TarotCard> = majorArcanaCards
 ) {
     // Group the history records by date ("yyyy-MM-dd").
     val groupedHistory = history.groupBy { record ->
@@ -93,7 +96,7 @@ fun HistoryScreen(
                             val localDateTime = record.timestamp.toLocalDateTime(TimeZone.currentSystemDefault())
                             val formattedTime = "${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}"
                             // Count of cards in this record.
-                            val cardCount = record.cardStates.size
+                            val cardCount = record.cards.size
 
                             Box(
                                 modifier = Modifier
@@ -118,13 +121,16 @@ fun HistoryScreen(
                                         modifier = Modifier.padding(end = 8.dp)
                                     )
                                     // Display card icons.
-                                    record.cardStates.forEach { cardState ->
-                                        val imageBitmap = imageResource(cardState.card.drawable)
-                                        Image(
-                                            bitmap = imageBitmap,
-                                            contentDescription = cardState.card.description,
-                                            modifier = Modifier.size(48.dp).padding(end = 4.dp)
-                                        )
+                                    record.cards.forEach { id ->
+                                        val card = tarotCards.find { it.id.toString() == id }
+                                        if (card != null) {
+                                            val imageBitmap = imageResource(card.drawable)
+                                            Image(
+                                                bitmap = imageBitmap,
+                                                contentDescription = card.description,
+                                                modifier = Modifier.size(48.dp).padding(end = 4.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

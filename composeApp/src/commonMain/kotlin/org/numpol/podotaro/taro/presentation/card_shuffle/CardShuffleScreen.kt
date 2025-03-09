@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.numpol.podotaro.taro.presentation.AppLanguage
 import org.numpol.podotaro.taro.presentation.CardState
-import org.numpol.podotaro.taro.presentation.FortuneRecord
+import org.numpol.podotaro.taro.domain.FortuneRecord
 import org.numpol.podotaro.taro.presentation.components.FullScreenCardView
 import org.numpol.podotaro.taro.presentation.components.HeaderAppBar
 import org.numpol.podotaro.taro.presentation.ShuffleStep
@@ -57,7 +57,6 @@ import kotlin.random.Random
 @Composable
 fun CardShuffleScreen(
     tarotCards: List<TarotCard>,
-    fortuneHistory: MutableList<FortuneRecord>,
     onShowHistory: () -> Unit,
     onShowFortune: (FortuneRecord) -> Unit,
     onRestart: () -> Unit,
@@ -72,6 +71,7 @@ fun CardShuffleScreen(
     var revealButtonVisible by remember { mutableStateOf(true) }
     var showPulse by remember { mutableStateOf(false) }
     var pulseProgress by remember { mutableStateOf(0f) }
+    var fortuneRecord by remember { mutableStateOf<FortuneRecord?>(null) }
 
     var cardStates by remember {
         mutableStateOf(
@@ -100,7 +100,7 @@ fun CardShuffleScreen(
 
     var isProcessing by remember { mutableStateOf(false) }
     var autoFlipped by remember { mutableStateOf(false) }
-    var fullScreenCard by remember { mutableStateOf<CardState?>(null) }
+    var fullScreenCard by remember { mutableStateOf<TarotCard?>(null) }
 
     // Pre-calculate images.
     val frontImages = tarotCards.associate { card ->
@@ -137,7 +137,7 @@ fun CardShuffleScreen(
                             transformedOffset.y in state.y..(state.y + cardHeight) &&
                             state.faceUp
                         ) {
-                            fullScreenCard = state
+                            fullScreenCard = state.card
                             break
                         }
                     }
@@ -213,7 +213,7 @@ fun CardShuffleScreen(
                             transformedOffset.y in state.y..(state.y + cardHeight) &&
                             state.faceUp
                         ) {
-                            onShowFortune(fortuneHistory.last())
+                            fortuneRecord?.let { onShowFortune(it) }
                             break
                         }
                     }
@@ -442,7 +442,7 @@ fun CardShuffleScreen(
                             scope.launch {
                                 val shuffledIndices = cardStates.indices.shuffled()
                                 for ((i, index) in shuffledIndices.withIndex()) {
-                                    fullScreenCard = cardStates[index]
+                                    fullScreenCard = cardStates[index].card
                                     delay(150)
                                     if (i == shuffledIndices.lastIndex) {
                                         animateValue(150) { progress ->
@@ -459,11 +459,10 @@ fun CardShuffleScreen(
                                 // Record history for Quick Fortune (1 card)
                                 fullScreenCard?.let { finalCard ->
                                     val record = FortuneRecord(
-                                        id = fortuneHistory.size,
+                                        type = 1,
                                         timestamp = Clock.System.now(),
-                                        cardStates = listOf(finalCard.copy())
+                                        cards = listOf(finalCard.id.toString()),
                                     )
-                                    fortuneHistory.add(record)
                                     onShowFortune(record)
                                 }
                             }
@@ -597,13 +596,14 @@ fun CardShuffleScreen(
 
                                                     // Record history for Card Revealed (multiple cards)
                                                     val revealedStates = cardStates.filter { it.selected }
+                                                    val cards = revealedStates.map { it.card.id.toString() }
                                                     val record =
                                                         FortuneRecord(
-                                                            id = fortuneHistory.size,
+                                                            type = cards.size,
                                                             timestamp = Clock.System.now(),
-                                                            cardStates = revealedStates.map { it.copy() }
+                                                            cards = cards
                                                         )
-                                                    fortuneHistory.add(record)
+                                                    fortuneRecord = record
                                                     currentStep = ShuffleStep.REVEAL_SELECTED
                                                 }
                                             }
@@ -640,7 +640,7 @@ fun CardShuffleScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Button(onClick = {
-                            onShowFortune(fortuneHistory.last())
+                            fortuneRecord?.let { onShowFortune(it) }
                         }) {
                             Text("See all")
                         }

@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.scale
-import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
 import podotaro.composeapp.generated.resources.Res
@@ -62,12 +61,6 @@ enum class AppLanguage { EN, TH }
 // -------------------------------------------------------------------------------------
 // 6) HISTORY RECORD DATA CLASS (using kotlinx-datetime)
 // -------------------------------------------------------------------------------------
-
-data class FortuneRecord(
-    val id: Int,
-    val timestamp: Instant,
-    val cardStates: List<CardState>
-)
 
 // -------------------------------------------------------------------------------------
 // 7) CARD STATE DATA CLASS

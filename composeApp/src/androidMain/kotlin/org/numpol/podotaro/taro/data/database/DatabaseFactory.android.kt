@@ -11,9 +11,10 @@ actual class DatabaseFactory(
         val appContext = context.applicationContext
         val dbFile = appContext.getDatabasePath(FortuneRecordDatabase.DB_NAME)
 
-        return Room.databaseBuilder(
-            context = appContext,
-            name = dbFile.absolutePath
-        )
+        return Room.databaseBuilder<FortuneRecordDatabase>(
+                context = appContext,
+                name = dbFile.absolutePath
+            ).fallbackToDestructiveMigration(true)
+
     }
 }

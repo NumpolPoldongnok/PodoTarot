@@ -20,13 +20,13 @@ import androidx.compose.ui.util.lerp
 import org.numpol.podotaro.taro.domain.getCardDetailsEnglish
 import org.numpol.podotaro.taro.domain.getCardDetailsThai
 import org.numpol.podotaro.taro.presentation.AppLanguage
-import org.numpol.podotaro.taro.presentation.CardState
+import org.numpol.podotaro.taro.presentation.TarotCard
 import org.numpol.podotaro.taro.presentation.loadFrontImage
 
 @Composable
 fun FortunePage(
     page: Int,
-    cardState: CardState,
+    tarotCard: TarotCard,
     pageOffset: Float,
     spreadMeaning: String,
     onClickCard: () -> Unit,
@@ -60,8 +60,8 @@ fun FortunePage(
         Spacer(modifier = Modifier.height(8.dp))
         // Card image.
         Image(
-            bitmap = loadFrontImage(cardState.card.drawable),
-            contentDescription = cardState.card.description,
+            bitmap = loadFrontImage(tarotCard.drawable),
+            contentDescription = tarotCard.description,
             contentScale = ContentScale.FillWidth,
             modifier = Modifier
                 .fillMaxWidth()
@@ -70,16 +70,16 @@ fun FortunePage(
         Spacer(modifier = Modifier.height(8.dp))
         // Card title and detail.
         Text(
-            text = cardState.card.description,
+            text = tarotCard.description,
             style = MaterialTheme.typography.headlineSmall,
             color = Color.White,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(4.dp))
         val details = if (localLanguage == AppLanguage.EN)
-            getCardDetailsEnglish(cardState.card)
+            getCardDetailsEnglish(tarotCard)
         else
-            getCardDetailsThai(cardState.card)
+            getCardDetailsThai(tarotCard)
         Text(
             text = details.firstOrNull() ?: "",
             style = MaterialTheme.typography.bodyLarge,

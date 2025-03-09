@@ -20,12 +20,12 @@ import androidx.compose.ui.unit.sp
 import org.numpol.podotaro.taro.domain.getCardDetailsEnglish
 import org.numpol.podotaro.taro.domain.getCardDetailsThai
 import org.numpol.podotaro.taro.presentation.AppLanguage
-import org.numpol.podotaro.taro.presentation.CardState
+import org.numpol.podotaro.taro.presentation.TarotCard
 import org.numpol.podotaro.taro.presentation.loadFrontImage
 
 @Composable
 fun FullScreenCardView(
-    cardState: CardState,
+    tarotCard: TarotCard,
     currentLanguage: AppLanguage,
     onClick: () -> Unit
 ) {
@@ -41,8 +41,8 @@ fun FullScreenCardView(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Image(
-                bitmap = loadFrontImage(cardState.card.drawable),
-                contentDescription = cardState.card.description,
+                bitmap = loadFrontImage(tarotCard.drawable),
+                contentDescription = tarotCard.description,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .weight(1f)
@@ -57,11 +57,11 @@ fun FullScreenCardView(
                     .padding(16.dp)
             ) {
                 val details = if (currentLanguage == AppLanguage.EN)
-                    getCardDetailsEnglish(cardState.card)
+                    getCardDetailsEnglish(tarotCard)
                 else
-                    getCardDetailsThai(cardState.card)
+                    getCardDetailsThai(tarotCard)
                 Text(
-                    text = details.firstOrNull() ?: cardState.card.description,
+                    text = details.firstOrNull() ?: tarotCard.description,
                     color = Color.White,
                     fontSize = 16.sp
                 )
