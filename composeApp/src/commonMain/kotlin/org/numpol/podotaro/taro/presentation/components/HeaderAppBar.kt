@@ -1,4 +1,4 @@
-package org.numpol.podotaro.taro
+package org.numpol.podotaro.taro.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,10 +16,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.numpol.podotaro.taro.presentation.AppLanguage
 
 @Composable
 fun BoxScope.HeaderAppBar(
-    headerTitle: String,
+    title: String,
     currentLanguage: AppLanguage,
     onChangeLanguage: (AppLanguage) -> Unit
 ) {
@@ -32,7 +33,7 @@ fun BoxScope.HeaderAppBar(
             .shadow(4.dp)
     ) {
         Text(
-            text = headerTitle,
+            text = title,
             modifier = Modifier.align(Alignment.Center),
             color = Color.White,
             fontSize = 18.sp,

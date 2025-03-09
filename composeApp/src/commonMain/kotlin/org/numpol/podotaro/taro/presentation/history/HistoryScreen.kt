@@ -1,4 +1,4 @@
-package org.numpol.podotaro.taro
+package org.numpol.podotaro.taro.presentation.history
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.imageResource
+import org.numpol.podotaro.taro.presentation.FortuneRecord
 
 @Composable
 fun HistoryScreen(

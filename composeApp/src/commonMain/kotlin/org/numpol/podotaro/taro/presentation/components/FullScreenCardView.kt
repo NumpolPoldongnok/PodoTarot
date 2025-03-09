@@ -1,4 +1,4 @@
-package org.numpol.podotaro.taro
+package org.numpol.podotaro.taro.presentation.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,14 +14,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.numpol.podotaro.taro.domain.getCardDetailsEnglish
+import org.numpol.podotaro.taro.domain.getCardDetailsThai
+import org.numpol.podotaro.taro.presentation.AppLanguage
+import org.numpol.podotaro.taro.presentation.CardState
+import org.numpol.podotaro.taro.presentation.loadFrontImage
 
 @Composable
 fun FullScreenCardView(
-    fullScreenCard: CardState,
+    cardState: CardState,
     currentLanguage: AppLanguage,
     onClick: () -> Unit
 ) {
@@ -38,8 +41,8 @@ fun FullScreenCardView(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Image(
-                bitmap = loadFrontImage(fullScreenCard.card.drawable),
-                contentDescription = fullScreenCard.card.description,
+                bitmap = loadFrontImage(cardState.card.drawable),
+                contentDescription = cardState.card.description,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .weight(1f)
@@ -54,11 +57,11 @@ fun FullScreenCardView(
                     .padding(16.dp)
             ) {
                 val details = if (currentLanguage == AppLanguage.EN)
-                    getCardDetailsEnglish(fullScreenCard.card)
+                    getCardDetailsEnglish(cardState.card)
                 else
-                    getCardDetailsThai(fullScreenCard.card)
+                    getCardDetailsThai(cardState.card)
                 Text(
-                    text = details.firstOrNull() ?: fullScreenCard.card.description,
+                    text = details.firstOrNull() ?: cardState.card.description,
                     color = Color.White,
                     fontSize = 16.sp
                 )

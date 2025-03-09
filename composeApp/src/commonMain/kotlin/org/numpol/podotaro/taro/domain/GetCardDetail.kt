@@ -1,4 +1,6 @@
-package org.numpol.podotaro.taro
+package org.numpol.podotaro.taro.domain
+
+import org.numpol.podotaro.taro.presentation.TarotCard
 
 fun getCardDetailsEnglish(card: TarotCard): List<String> {
     return when (card.description) {
