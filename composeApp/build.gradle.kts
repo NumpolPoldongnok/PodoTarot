@@ -44,6 +44,7 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.compose)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.core.splashscreen)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -55,9 +56,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.kotlinx.datetime)
-//            implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
-//            implementation("androidx.compose.ui:ui:1.4.3") // and other Compose dependencies
-//            implementation("io.insert-koin:koin-androidx-compose:3.4.2")
 
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
