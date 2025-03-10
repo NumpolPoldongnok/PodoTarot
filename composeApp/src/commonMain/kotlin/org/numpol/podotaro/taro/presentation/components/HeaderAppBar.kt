@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,8 +26,9 @@ import org.numpol.podotaro.taro.presentation.AppLanguage
 @Composable
 fun BoxScope.HeaderAppBar(
     title: String,
-    currentLanguage: AppLanguage,
-    onChangeLanguage: (AppLanguage) -> Unit
+    currentLanguage: AppLanguage? = null,
+    onChangeLanguage: ((AppLanguage) -> Unit)? = null,
+    onClickBack: (() -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
@@ -32,6 +38,14 @@ fun BoxScope.HeaderAppBar(
             .background(Color.DarkGray)
             .shadow(4.dp)
     ) {
+        if (onClickBack != null) {
+            IconButton(onClick = onClickBack, colors = IconButtonDefaults.iconButtonColors().copy(contentColor = Color.White)) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        }
         Text(
             text = title,
             modifier = Modifier.align(Alignment.Center),
@@ -39,17 +53,19 @@ fun BoxScope.HeaderAppBar(
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = if (currentLanguage == AppLanguage.EN) "EN" else "TH",
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp)
-                .clickable {
-                    onChangeLanguage(if (currentLanguage == AppLanguage.EN) AppLanguage.TH else AppLanguage.EN)
-                },
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
+        if (currentLanguage != null && onChangeLanguage != null) {
+            Text(
+                text = if (currentLanguage == AppLanguage.EN) "EN" else "TH",
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp)
+                    .clickable {
+                        onChangeLanguage(if (currentLanguage == AppLanguage.EN) AppLanguage.TH else AppLanguage.EN)
+                    },
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }

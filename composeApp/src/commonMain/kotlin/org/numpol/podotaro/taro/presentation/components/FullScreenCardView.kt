@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.numpol.podotaro.taro.domain.getCardDetailsEnglish
@@ -26,9 +27,12 @@ import org.numpol.podotaro.taro.presentation.loadFrontImage
 @Composable
 fun FullScreenCardView(
     tarotCard: TarotCard,
+    cardCount: Int?,
     currentLanguage: AppLanguage,
     onClick: () -> Unit
 ) {
+    val description: String = getCardDescription(cardCount, currentLanguage, tarotCard)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -48,7 +52,6 @@ fun FullScreenCardView(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(16.dp)
-                    //.graphicsLayer { }
             )
             Box(
                 modifier = Modifier
@@ -56,17 +59,33 @@ fun FullScreenCardView(
                     .background(Color.DarkGray.copy(alpha = 0.7f))
                     .padding(16.dp)
             ) {
-                val details = if (currentLanguage == AppLanguage.EN)
-                    getCardDetailsEnglish(tarotCard)
-                else
-                    getCardDetailsThai(tarotCard)
                 Text(
-                    text = details.firstOrNull() ?: tarotCard.description,
+                    text = description,
                     color = Color.White,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
+}
+
+private fun getCardDescription(
+    cardCount: Int?,
+    currentLanguage: AppLanguage,
+    tarotCard: TarotCard
+): String {
+    val description: String
+    if (cardCount != null) {
+        val details = if (currentLanguage == AppLanguage.EN)
+            getCardDetailsEnglish(tarotCard)
+        else
+            getCardDetailsThai(tarotCard)
+        description = details[cardCount]
+
+    } else {
+        description = tarotCard.description
+    }
+    return description
 }
 

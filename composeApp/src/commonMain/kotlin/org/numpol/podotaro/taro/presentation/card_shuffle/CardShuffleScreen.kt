@@ -54,18 +54,81 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
+// Localization support for English and Thai.
+object LocalizedStrings {
+    fun headerTitle(step: ShuffleStep, language: AppLanguage): String {
+        return when (step) {
+            ShuffleStep.REVEAL -> when (language) {
+                AppLanguage.EN -> "Card Preview"
+                AppLanguage.TH -> "ดูการ์ด"
+            }
+            ShuffleStep.SHUFFLE -> when (language) {
+                AppLanguage.EN -> "Shuffling Cards"
+                AppLanguage.TH -> "กำลังสับการ์ด"
+            }
+            ShuffleStep.DEAL -> when (language) {
+                AppLanguage.EN -> "Select 1-5 Cards"
+                AppLanguage.TH -> "เลือกการ์ด 1-5 ใบ"
+            }
+            ShuffleStep.REVEAL_SELECTED -> when (language) {
+                AppLanguage.EN -> "Cards Revealed"
+                AppLanguage.TH -> "เปิดการ์ดแล้ว"
+            }
+        }
+    }
+
+    fun mergeButton(language: AppLanguage): String = when (language) {
+        AppLanguage.EN -> "Merge"
+        AppLanguage.TH -> "สับการ์ด"
+    }
+
+    fun quickFortuneButton(language: AppLanguage): String = when (language) {
+        AppLanguage.EN -> "Quick Fortune"
+        AppLanguage.TH -> "ดูดวงด่วน"
+    }
+
+    fun historyButton(language: AppLanguage): String = when (language) {
+        AppLanguage.EN -> "History"
+        AppLanguage.TH -> "ประวัติ"
+    }
+
+    fun revealSelectedButton(selectedCount: Int, language: AppLanguage): String =
+        if (selectedCount > 0) {
+            when (language) {
+                AppLanguage.EN -> "Reveal Selected"
+                AppLanguage.TH -> "เปิดการ์ดที่เลือก"
+            }
+        } else {
+            when (language) {
+                AppLanguage.EN -> "Select 1-5 Cards"
+                AppLanguage.TH -> "เลือกการ์ด 1-5 ใบ"
+            }
+        }
+
+    fun seeAllButton(language: AppLanguage): String = when (language) {
+        AppLanguage.EN -> "See all"
+        AppLanguage.TH -> "ดูทั้งหมด"
+    }
+
+    fun restartButton(language: AppLanguage): String = when (language) {
+        AppLanguage.EN -> "Restart"
+        AppLanguage.TH -> "เริ่มใหม่"
+    }
+}
+
 @Composable
 fun CardShuffleScreen(
     tarotCards: List<TarotCard>,
     onShowHistory: () -> Unit,
     onShowFortune: (FortuneRecord) -> Unit,
     onRestart: () -> Unit,
+    currentLanguage: AppLanguage,
+    onChangeLanguage: (AppLanguage) -> Unit
 ) {
     val cardWidth = 150f
     val cardHeight = 220f
     val spacing = 20f
 
-    var currentLanguage by remember { mutableStateOf(AppLanguage.EN) }
     var showControlButton by remember { mutableStateOf(true) }
     var finalCardScale by remember { mutableStateOf(1f) }
     var revealButtonVisible by remember { mutableStateOf(true) }
@@ -177,19 +240,10 @@ fun CardShuffleScreen(
                                         val startY = card.y
                                         val startRotation = card.rotation
                                         animateValue(500) { progress ->
-                                            val newX =
-                                                startX + (targetPosition.x - startX) * progress
-                                            val newY =
-                                                startY + (targetPosition.y - startY) * progress
-                                            val newRotation =
-                                                startRotation + (targetRotation - startRotation) * progress
-                                            updateCard(idx) {
-                                                it.copy(
-                                                    x = newX,
-                                                    y = newY,
-                                                    rotation = newRotation
-                                                )
-                                            }
+                                            val newX = startX + (targetPosition.x - startX) * progress
+                                            val newY = startY + (targetPosition.y - startY) * progress
+                                            val newRotation = startRotation + (targetRotation - startRotation) * progress
+                                            updateCard(idx) { it.copy(x = newX, y = newY, rotation = newRotation) }
                                         }
                                     }
                                 }
@@ -301,7 +355,7 @@ fun CardShuffleScreen(
                         val radius = 50f
                         val targetX = centerX + (radius * cos(angle)).toFloat()
                         val targetY = centerY + (radius * sin(angle)).toFloat()
-                       animateValue(100) { p ->
+                        animateValue(100) { p ->
                             val nx = startX + (targetX - startX) * p
                             val ny = startY + (targetY - startY) * p
                             updateCard(i) { it.copy(x = nx, y = ny) }
@@ -342,12 +396,7 @@ fun CardShuffleScreen(
         showControlButton = currentStep != ShuffleStep.SHUFFLE
     }
 
-    val headerTitle = when (currentStep) {
-        ShuffleStep.REVEAL -> "Card Preview"
-        ShuffleStep.SHUFFLE -> "Shuffling Cards"
-        ShuffleStep.DEAL -> "Select 1-5 Cards"
-        ShuffleStep.REVEAL_SELECTED -> "Cards Revealed"
-    }
+    val headerTitle = LocalizedStrings.headerTitle(currentStep, currentLanguage)
 
     val controlButtonAlignment = when (currentStep) {
         ShuffleStep.DEAL -> Alignment.Center
@@ -379,9 +428,7 @@ fun CardShuffleScreen(
         }
 
         // Header Bar with language toggle.
-        HeaderAppBar(headerTitle, currentLanguage, onChangeLanguage = {
-            currentLanguage = it
-        })
+        HeaderAppBar(headerTitle, currentLanguage, onChangeLanguage = onChangeLanguage)
 
         // Control Buttons.
         if (showControlButton) {
@@ -419,10 +466,8 @@ fun CardShuffleScreen(
                                                 val startX = cardStates[i].x
                                                 val startY = cardStates[i].y
                                                 animateValue(500) { progress ->
-                                                    val newX =
-                                                        startX + (centerX - startX) * progress
-                                                    val newY =
-                                                        startY + (centerY - startY) * progress
+                                                    val newX = startX + (centerX - startX) * progress
+                                                    val newY = startY + (centerY - startY) * progress
                                                     updateCard(i) { it.copy(x = newX, y = newY) }
                                                 }
                                             }
@@ -435,7 +480,7 @@ fun CardShuffleScreen(
                             }
                         }
                     ) {
-                        Text("Merge")
+                        Text(LocalizedStrings.mergeButton(currentLanguage))
                     }
                     Button(
                         onClick = {
@@ -461,21 +506,21 @@ fun CardShuffleScreen(
                                     val record = FortuneRecord(
                                         type = 1,
                                         timestamp = Clock.System.now(),
-                                        cards = listOf(finalCard.id.toString()),
+                                        cards = listOf(finalCard.id.toString())
                                     )
                                     onShowFortune(record)
                                 }
                             }
                         }
                     ) {
-                        Text("Quick Fortune")
+                        Text(LocalizedStrings.quickFortuneButton(currentLanguage))
                     }
                     Button(onClick = onShowHistory) {
-                        Text("History")
+                        Text(LocalizedStrings.historyButton(currentLanguage))
                     }
                 } else if (currentStep == ShuffleStep.DEAL) {
                     val selectedCount = cardStates.count { it.selected }
-                    val buttonText = if (selectedCount > 0) "Reveal Selected" else "Select 1-5 Cards"
+                    val buttonText = LocalizedStrings.revealSelectedButton(selectedCount, currentLanguage)
                     if (revealButtonVisible) {
                         Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.Center) {
                             Button(
@@ -506,19 +551,10 @@ fun CardShuffleScreen(
                                                             val distance = 800f
                                                             val targetX = startX + (distance * cos(angle)).toFloat()
                                                             val targetY = startY + (distance * sin(angle)).toFloat()
-                                                            animateValue(
-                                                                500
-                                                            ) { progress ->
-                                                                val newX =
-                                                                    startX + (targetX - startX) * progress
-                                                                val newY =
-                                                                    startY + (targetY - startY) * progress
-                                                                updateCard(i) {
-                                                                    it.copy(
-                                                                        x = newX,
-                                                                        y = newY
-                                                                    )
-                                                                }
+                                                            animateValue(500) { progress ->
+                                                                val newX = startX + (targetX - startX) * progress
+                                                                val newY = startY + (targetY - startY) * progress
+                                                                updateCard(i) { it.copy(x = newX, y = newY) }
                                                             }
                                                         }
                                                     }
@@ -561,13 +597,9 @@ fun CardShuffleScreen(
                                                             val startX = cardStates[i].x
                                                             val startY = cardStates[i].y
                                                             val target = targetPositions.getOrElse(index) { Offset(centerX, centerY) }
-                                                            animateValue(
-                                                                500
-                                                            ) { progress ->
-                                                                val newX =
-                                                                    startX + (target.x - startX) * progress
-                                                                val newY =
-                                                                    startY + (target.y - startY) * progress
+                                                            animateValue(500) { progress ->
+                                                                val newX = startX + (target.x - startX) * progress
+                                                                val newY = startY + (target.y - startY) * progress
                                                                 updateCard(i) {
                                                                     it.copy(
                                                                         x = newX,
@@ -583,9 +615,7 @@ fun CardShuffleScreen(
 
                                                     val flipJobs = selectedIndices.map { i ->
                                                         launch {
-                                                            animateValue(
-                                                                500
-                                                            ) { progress ->
+                                                            animateValue(500) { progress ->
                                                                 val angle = 180f - progress * 180f
                                                                 updateCard(i) { it.copy(flipAngle = angle) }
                                                             }
@@ -597,12 +627,11 @@ fun CardShuffleScreen(
                                                     // Record history for Card Revealed (multiple cards)
                                                     val revealedStates = cardStates.filter { it.selected }
                                                     val cards = revealedStates.map { it.card.id.toString() }
-                                                    val record =
-                                                        FortuneRecord(
-                                                            type = cards.size,
-                                                            timestamp = Clock.System.now(),
-                                                            cards = cards
-                                                        )
+                                                    val record = FortuneRecord(
+                                                        type = cards.size,
+                                                        timestamp = Clock.System.now(),
+                                                        cards = cards
+                                                    )
                                                     fortuneRecord = record
                                                     currentStep = ShuffleStep.REVEAL_SELECTED
                                                 }
@@ -642,13 +671,13 @@ fun CardShuffleScreen(
                         Button(onClick = {
                             fortuneRecord?.let { onShowFortune(it) }
                         }) {
-                            Text("See all")
+                            Text(LocalizedStrings.seeAllButton(currentLanguage))
                         }
                         Button(
                             onClick = onRestart
                         ) {
                             Text(
-                                text = "Restart",
+                                text = LocalizedStrings.restartButton(currentLanguage),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center
                             )
@@ -662,11 +691,11 @@ fun CardShuffleScreen(
         // ------------------------------
         if (fullScreenCard != null) {
             FullScreenCardView(
-                fullScreenCard!!,
+                tarotCard = fullScreenCard!!,
+                cardCount = null,
                 currentLanguage = currentLanguage,
                 onClick = { fullScreenCard = null }
             )
         }
     }
 }
-

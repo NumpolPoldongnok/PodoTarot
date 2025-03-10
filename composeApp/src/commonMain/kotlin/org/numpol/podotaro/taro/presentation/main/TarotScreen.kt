@@ -7,7 +7,6 @@ import org.numpol.podotaro.taro.domain.FortuneRecord
 sealed interface TarotScreen {
     data object Home : TarotScreen
     data object Shuffle : TarotScreen
-    data class FullScreen(val cardState: CardState) : TarotScreen
     data object History : TarotScreen
     data class Fortune(val fortuneRecord: FortuneRecord) : TarotScreen
 }

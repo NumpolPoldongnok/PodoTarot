@@ -29,59 +29,84 @@ import org.numpol.podotaro.taro.presentation.components.HeaderAppBar
 import org.numpol.podotaro.taro.presentation.majorArcanaCards
 import kotlin.math.abs
 
+// Helper object to provide localized strings for the fortune result screen.
+object FortuneLocalizedStrings {
+    fun headerTitle(language: AppLanguage): String {
+        return when (language) {
+            AppLanguage.EN -> "Your Fortune"
+            AppLanguage.TH -> "ดวงชะตาของคุณ"
+        }
+    }
+
+    fun nextButton(language: AppLanguage): String {
+        return when (language) {
+            AppLanguage.EN -> "Next"
+            AppLanguage.TH -> "ถัดไป"
+        }
+    }
+
+    fun restartButton(language: AppLanguage): String {
+        return when (language) {
+            AppLanguage.EN -> "Restart"
+            AppLanguage.TH -> "เริ่มใหม่"
+        }
+    }
+
+    fun spreadMeanings(language: AppLanguage, cardCount: Int): List<String> {
+        return if (language == AppLanguage.EN) {
+            when (cardCount) {
+                1 -> listOf("Overall daily fortune")
+                2 -> listOf("Your journey ahead", "Your health and vitality")
+                3 -> listOf("Travel and adventure", "Health and well-being", "Career and work")
+                4 -> listOf("Travel and adventure", "Health and well-being", "Career and work", "Relationships and love")
+                5 -> listOf("Past influences", "Present situation", "Future outlook", "Advice", "Outcome")
+                else -> emptyList()
+            }
+        } else {
+            when (cardCount) {
+                1 -> listOf("โชคชะตารายวันโดยรวม")
+                2 -> listOf("เส้นทางข้างหน้า", "สุขภาพและความมีชีวิตชีวา")
+                3 -> listOf("การเดินทางและการผจญภัย", "สุขภาพและความเป็นอยู่ที่ดี", "อาชีพและการทำงาน")
+                4 -> listOf("การเดินทางและการผจญภัย", "สุขภาพและความเป็นอยู่ที่ดี", "อาชีพและการทำงาน", "ความสัมพันธ์และความรัก")
+                5 -> listOf("อิทธิพลในอดีต", "สถานการณ์ปัจจุบัน", "แนวโน้มในอนาคต", "คำแนะนำ", "ผลลัพธ์")
+                else -> emptyList()
+            }
+        }
+    }
+}
+
 @Composable
 fun FortuneResultScreen(
     cardIds: List<String>,
-    language: AppLanguage,
+    currentLanguage: AppLanguage,
+    onChangeLanguage: (AppLanguage) -> Unit,
     onRestart: () -> Unit,
     tarotCards: List<TarotCard> = majorArcanaCards
 ) {
-    var localLanguage by remember { mutableStateOf(language) }
     var fullScreenCard by remember { mutableStateOf<TarotCard?>(null) }
     // Pager state with total pages equal to the number of cards.
     val pagerState = rememberPagerState(initialPage = 0) { cardIds.size }
     val coroutineScope = rememberCoroutineScope()
 
-    // Define spread meanings based on language and card count.
-    val spreadMeanings = if (localLanguage == AppLanguage.EN) {
-        when (cardIds.size) {
-            1 -> listOf("Overall daily fortune")
-            2 -> listOf("Your journey ahead", "Your health and vitality")
-            3 -> listOf("Travel and adventure", "Health and well-being", "Career and work")
-            4 -> listOf("Travel and adventure", "Health and well-being", "Career and work", "Relationships and love")
-            5 -> listOf("Past influences", "Present situation", "Future outlook", "Advice", "Outcome")
-            else -> emptyList()
-        }
-    } else {
-        when (cardIds.size) {
-            1 -> listOf("โชคชะตารายวันโดยรวม")
-            2 -> listOf("เส้นทางข้างหน้า", "สุขภาพและความมีชีวิตชีวา")
-            3 -> listOf("การเดินทางและการผจญภัย", "สุขภาพและความเป็นอยู่ที่ดี", "อาชีพและการทำงาน")
-            4 -> listOf("การเดินทางและการผจญภัย", "สุขภาพและความเป็นอยู่ที่ดี", "อาชีพและการทำงาน", "ความสัมพันธ์และความรัก")
-            5 -> listOf("อิทธิพลในอดีต", "สถานการณ์ปัจจุบัน", "แนวโน้มในอนาคต", "คำแนะนำ", "ผลลัพธ์")
-            else -> emptyList()
-        }
-    }
-    // Decide button text based on current page.
+    // Use the localized spread meanings.
+    val spreadMeanings = FortuneLocalizedStrings.spreadMeanings(currentLanguage, cardIds.size)
+
+    // Decide the bottom button text based on the current page.
     val isLastPage = pagerState.currentPage == cardIds.size - 1
     val buttonText = if (isLastPage) {
-        if (localLanguage == AppLanguage.EN) "Restart" else "เริ่มใหม่"
+        FortuneLocalizedStrings.restartButton(currentLanguage)
     } else {
-        if (localLanguage == AppLanguage.EN) "Next" else "ถัดไป"
+        FortuneLocalizedStrings.nextButton(currentLanguage)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Falling stars animation in the background.
+        // Background falling stars (implementation assumed to exist).
         FallingStarsBackground(modifier = Modifier.fillMaxSize())
 
-        HeaderAppBar("Your Fortune",
-            currentLanguage = localLanguage,
-            onChangeLanguage = { localLanguage = it})
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             item { Spacer(modifier = Modifier.height(48.dp)) }
             item {
                 // HorizontalPager wrapped in LazyColumn item.
@@ -93,16 +118,16 @@ fun FortuneResultScreen(
                     pageSpacing = 0.dp
                 ) { page ->
                     val cardId = cardIds[page]
-                    // Compute page offset for any scaling/transition effects.
+                    // Compute page offset for scaling/transition effects.
                     val pageOffset = abs((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-                    val tarotCard = tarotCards.first { it.id.toString() == cardId}
+                    val tarotCard = tarotCards.first { it.id.toString() == cardId }
                     FortunePage(
                         page = page,
                         tarotCard = tarotCard,
                         pageOffset = pageOffset,
                         spreadMeaning = spreadMeanings.getOrElse(page) { "" },
                         onClickCard = { fullScreenCard = tarotCard },
-                        localLanguage = localLanguage
+                        localLanguage = currentLanguage
                     )
                 }
             }
@@ -125,13 +150,22 @@ fun FortuneResultScreen(
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+        // Localized header title.
+        val headerTitle = FortuneLocalizedStrings.headerTitle(currentLanguage)
+        HeaderAppBar(
+            title = headerTitle,
+            currentLanguage = currentLanguage,
+            onChangeLanguage = onChangeLanguage
+        )
+
         // Full-screen overlay: show the card image in full screen when tapped.
         if (fullScreenCard != null) {
-            FullScreenCardView(fullScreenCard!!,
-                currentLanguage = localLanguage,
-                onClick = {
-                fullScreenCard = null
-            })
+            FullScreenCardView(
+                tarotCard = fullScreenCard!!,
+                cardCount = cardIds.size,
+                currentLanguage = currentLanguage,
+                onClick = { fullScreenCard = null }
+            )
         }
     }
 }

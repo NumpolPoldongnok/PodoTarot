@@ -32,6 +32,13 @@ fun FortunePage(
     onClickCard: () -> Unit,
     localLanguage: AppLanguage,
 ) {
+    fun headerTitle(language: AppLanguage, page: Int): String {
+        return when (language) {
+            AppLanguage.EN -> "Position: ${page + 1}"
+            AppLanguage.TH -> "ตำแหน่งที่: ${page + 1}"
+        }
+    }
+
     // Calculate offset for scaling effect.
     Column(
         modifier = Modifier
@@ -46,7 +53,7 @@ fun FortunePage(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Position: ${page + 1}",
+            text = headerTitle(language = localLanguage, page = page),
             style = MaterialTheme.typography.headlineSmall,
             color = Color.White,
             textAlign = TextAlign.Center

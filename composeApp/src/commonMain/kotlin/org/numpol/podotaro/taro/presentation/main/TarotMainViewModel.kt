@@ -1,8 +1,5 @@
 package org.numpol.podotaro.taro.presentation.main
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -16,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.numpol.podotaro.taro.domain.FortuneRecordRepository
 import org.numpol.podotaro.taro.domain.FortuneRecord
+import org.numpol.podotaro.taro.presentation.AppLanguage
 
 class TarotMainViewModel(
     private val fortuneRecordRepository: FortuneRecordRepository
@@ -34,10 +32,6 @@ class TarotMainViewModel(
             _state.value
         )
 
-    // The current navigation screen state.
-    var currentScreen by mutableStateOf<TarotScreen>(TarotScreen.Shuffle)
-        private set
-
     fun onAction(action: TarotMainAction) {
         when (action) {
             is TarotMainAction.OnNavigateTo -> {
@@ -47,13 +41,24 @@ class TarotMainViewModel(
                     }
                     else -> { }
                 }
-                currentScreen = action.screen
+                _state.update { it.copy(currentScreen = action.screen) }
             }
 
             is TarotMainAction.OnRestart -> {
-                currentScreen = TarotScreen.Home
+                _state.update { it.copy(currentScreen = TarotScreen.Home) }
             }
 
+            TarotMainAction.OnChangeLanguage -> {
+                _state.update {
+                    val language: AppLanguage
+                    if (it.currentLanguage == AppLanguage.TH) {
+                        language = AppLanguage.EN
+                    } else {
+                        language = AppLanguage.TH
+                    }
+                    it.copy(currentLanguage = language)
+                }
+            }
         }
     }
 

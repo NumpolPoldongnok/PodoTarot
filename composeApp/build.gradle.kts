@@ -71,6 +71,9 @@ kotlin {
 
             implementation(libs.bundles.ktor)
             implementation(libs.bundles.coil)
+
+            implementation("androidx.compose.material:material-icons-extended:1.5.4")
+
         }
         nativeMain.dependencies {
             implementation(libs.ktor.client.darwin)

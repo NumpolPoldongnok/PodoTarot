@@ -1,17 +1,15 @@
-package org.numpol.podotaro.taro.presentation
+package org.numpol.podotaro.taro.presentation.main
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
+import org.numpol.podotaro.taro.presentation.TarotCard
+import org.numpol.podotaro.taro.presentation.allTarotCards
 import org.numpol.podotaro.taro.presentation.card_shuffle.CardShuffleScreen
-import org.numpol.podotaro.taro.presentation.components.FullScreenCardView
 import org.numpol.podotaro.taro.presentation.fortune_result.FortuneResultScreen
 import org.numpol.podotaro.taro.presentation.history.HistoryScreen
-import org.numpol.podotaro.taro.presentation.main.TarotMainAction
-import org.numpol.podotaro.taro.presentation.main.TarotScreen
-import org.numpol.podotaro.taro.presentation.main.TarotMainViewModel
 
 @Composable
 fun TarotMainScreen(
@@ -20,7 +18,7 @@ fun TarotMainScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    when (val screen = viewModel.currentScreen) {
+    when (val screen = state.currentScreen) {
         is TarotScreen.Home -> {
             LaunchedEffect(true) {
                 // Delay for a splash effect, then navigate to shuffle.
@@ -39,16 +37,10 @@ fun TarotMainScreen(
                 },
                 onRestart = {
                     viewModel.onAction(TarotMainAction.OnRestart)
-                }
-            )
-        }
-
-        is TarotScreen.FullScreen -> {
-            FullScreenCardView(
-                tarotCard = screen.cardState.card,
-                currentLanguage = state.language,
-                onClick = {
-                    viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
+                },
+                currentLanguage = state.currentLanguage,
+                onChangeLanguage = {
+                    viewModel.onAction(TarotMainAction.OnChangeLanguage)
                 }
             )
         }
@@ -57,22 +49,24 @@ fun TarotMainScreen(
             HistoryScreen(
                 history = state.fortuneRecords,
                 onSelect = { record ->
-                    //viewModel.navigateToFortune(record)
                     viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Fortune(record)))
                 },
                 onClose = {
-                    //viewModel.navigateToShuffle()
                     viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
-                }
+                },
+                currentLanguage = state.currentLanguage,
+                onChangeLanguage = { viewModel.onAction(TarotMainAction.OnChangeLanguage)}
             )
         }
 
         is TarotScreen.Fortune -> {
             FortuneResultScreen(
                 cardIds = screen.fortuneRecord.cards,
-                language = AppLanguage.EN,
+                currentLanguage = state.currentLanguage,
+                onChangeLanguage = {
+                    viewModel.onAction(TarotMainAction.OnChangeLanguage)
+                },
                 onRestart = {
-                    //viewModel.navigateToShuffle()
                     viewModel.onAction(TarotMainAction.OnNavigateTo(TarotScreen.Shuffle))
                 },
             )
