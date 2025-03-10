@@ -1,4 +1,5 @@
 package org.numpol.podotaro.taro.presentation.fortune_result
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.util.lerp
 import org.numpol.podotaro.taro.domain.getCardDetailsEnglish
 import org.numpol.podotaro.taro.domain.getCardDetailsThai
@@ -55,13 +55,13 @@ fun FortunePage(
         Text(
             text = headerTitle(language = localLanguage, page = page),
             style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Text(
             text = spreadMeaning,
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -79,7 +79,7 @@ fun FortunePage(
         Text(
             text = tarotCard.description,
             style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -90,7 +90,7 @@ fun FortunePage(
         Text(
             text = details.firstOrNull() ?: "",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.LightGray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }

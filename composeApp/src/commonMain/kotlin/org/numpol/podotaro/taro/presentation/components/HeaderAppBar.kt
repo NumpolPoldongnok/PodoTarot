@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,11 +36,13 @@ fun BoxScope.HeaderAppBar(
             .fillMaxWidth()
             .height(50.dp)
             .align(Alignment.TopCenter)
-            .background(Color.DarkGray)
+            .background(MaterialTheme.colorScheme.primary)
             .shadow(4.dp)
     ) {
         if (onClickBack != null) {
-            IconButton(onClick = onClickBack, colors = IconButtonDefaults.iconButtonColors().copy(contentColor = Color.White)) {
+            IconButton(
+                onClick = onClickBack,
+                colors = IconButtonDefaults.iconButtonColors().copy(contentColor = MaterialTheme.colorScheme.onPrimary)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back"
@@ -49,7 +52,7 @@ fun BoxScope.HeaderAppBar(
         Text(
             text = title,
             modifier = Modifier.align(Alignment.Center),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
@@ -62,7 +65,7 @@ fun BoxScope.HeaderAppBar(
                     .clickable {
                         onChangeLanguage(if (currentLanguage == AppLanguage.EN) AppLanguage.TH else AppLanguage.EN)
                     },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )

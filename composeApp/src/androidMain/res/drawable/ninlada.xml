@@ -5,10 +5,10 @@
     android:width="100dp">
       
     <group
-        android:pivotX="350"
-        android:pivotY="270"
+        android:pivotX="300"
+        android:pivotY="400"
         android:scaleX="0.5"
-        android:scaleY="0.5"
+        android:scaleY="0.7"
         >
         <path android:fillColor="#000000" android:pathData="M0,0L0,706L547,706L547,0L0,0z" android:strokeColor="#00000000"/>
 

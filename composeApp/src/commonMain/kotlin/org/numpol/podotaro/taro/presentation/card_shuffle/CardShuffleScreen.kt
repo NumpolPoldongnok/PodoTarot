@@ -49,6 +49,8 @@ import org.numpol.podotaro.taro.presentation.TarotCard
 import org.numpol.podotaro.taro.presentation.animateValue
 import org.numpol.podotaro.taro.presentation.loadBackImage
 import org.numpol.podotaro.taro.presentation.loadFrontImage
+import org.numpol.podotaro.ui.theme.backgroundDark
+import org.numpol.podotaro.ui.theme.backgroundLight
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -409,7 +411,10 @@ fun CardShuffleScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFFFFF176), Color(0xFFFFA000))
+                    //colors = listOf(Color(0xFFFFF176), Color(0xFFFFA000))
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background,
+                        backgroundDark)
                 )
             )
     ) {
