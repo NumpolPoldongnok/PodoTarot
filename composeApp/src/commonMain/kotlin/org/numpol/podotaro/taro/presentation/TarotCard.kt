@@ -11,7 +11,6 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
 import podotaro.composeapp.generated.resources.Res
 import podotaro.composeapp.generated.resources.card_back_01
-import podotaro.composeapp.generated.resources.card_back_05
 import podotaro.composeapp.generated.resources.death
 import podotaro.composeapp.generated.resources.judgment
 import podotaro.composeapp.generated.resources.justice

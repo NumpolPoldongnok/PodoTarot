@@ -413,8 +413,9 @@ fun CardShuffleScreen(
                 Brush.verticalGradient(
                     //colors = listOf(Color(0xFFFFF176), Color(0xFFFFA000))
                     colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        backgroundDark)
+                        MaterialTheme.colorScheme.primary,
+                        backgroundDark
+                    )
                 )
             )
     ) {
