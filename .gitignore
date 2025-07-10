@@ -31,3 +31,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/numpol.pol.xcuserdatad/UserInterfaceState.xcuserstate
+iosApp/iosApp.xcodeproj/xcuserdata/numpol.pol.xcuserdatad/xcschemes/xcschememanagement.plist
